@@ -92,3 +92,7 @@ Every catalogue card, quick view and product page links to that product in the t
 
 Python point-by-point tracking, setup and privacy details: [python/README.md](python/README.md).
 
+
+### Demo checkout
+
+The bag and checkout include photo order summaries, quantity/removal controls, saved pieces, responsive delivery fields and a demo-details shortcut. Sample checkout opens an explicitly labelled payment simulator with UPI, card and net banking choices. Success creates a session-only sample receipt; simulated failure and cancellation keep the bag for retry. No payment credentials are collected, no money is charged and no fulfilment is triggered. Live Razorpay checkout remains separate and requires configured services.
