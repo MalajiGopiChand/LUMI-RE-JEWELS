@@ -1,0 +1,13 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createHmac} from 'node:crypto';
+import {cartSchema,cartTotals,customerSchema,productSchema} from '../lib/validation';
+import {verifyHmac,origin} from '../lib/security';
+import {sampleProducts} from '../lib/catalogue';
+test('currency calculations use integer paise and clamp discounts',()=>{assert.deepEqual(cartTotals([{price:19.99,quantity:3},{price:0.1,quantity:1}],10),{subtotal:60.07,discount:10,total:50.07});assert.deepEqual(cartTotals([{price:100,quantity:1}],200),{subtotal:100,discount:100,total:0});});
+test('cart rejects duplicate SKUs and invalid quantities',()=>{const line={id:'lj-1',sku:'LJ-1-1',quantity:1};assert.equal(cartSchema.safeParse({items:[line,line]}).success,false);for(const quantity of [-1,0,1.5,11])assert.equal(cartSchema.safeParse({items:[{...line,quantity}]}).success,false);assert.equal(cartSchema.safeParse({items:[line]}).success,true)});
+test('catalogue data conforms to product contract',()=>{for(const p of sampleProducts)assert.equal(productSchema.safeParse(p).success,true,p.name)});
+test('rejects duplicate variants and executable media URLs',()=>{const p=sampleProducts[0];assert.equal(productSchema.safeParse({...p,variants:[p.variants[0],p.variants[0]]}).success,false);assert.equal(productSchema.safeParse({...p,images:['javascript:alert(1)']}).success,false)});
+test('payment signature accepts only the authentic payload',()=>{const key='test-secret',payload='order_123|pay_123',signature=createHmac('sha256',key).update(payload).digest('hex');assert.equal(verifyHmac(payload,signature,key),true);assert.equal(verifyHmac('order_other|pay_123',signature,key),false);assert.equal(verifyHmac(payload,'short',key),false);assert.equal(verifyHmac(payload,signature,'wrong-key'),false)});
+test('checkout validates email and India postal code',()=>{const c={name:'Test Customer',email:'test@example.com',phone:'+91 9876543210',address:'123 Example Road',city:'Chennai',state:'Tamil Nadu',postalCode:'600001'};assert.equal(customerSchema.safeParse(c).success,true);assert.equal(customerSchema.safeParse({...c,postalCode:'abc'}).success,false);assert.equal(customerSchema.safeParse({...c,email:'not-email'}).success,false)});
+test('origin check supports loopback host while rejecting cross-site requests',()=>{assert.doesNotThrow(()=>origin(new Request('http://localhost:3000/api/cart/validate',{headers:{host:'127.0.0.1:3000',origin:'http://127.0.0.1:3000'}})));assert.throws(()=>origin(new Request('http://localhost:3000/api/cart/validate',{headers:{host:'127.0.0.1:3000',origin:'https://evil.example'}})));assert.throws(()=>origin(new Request('http://localhost:3000/api/cart/validate',{headers:{host:'127.0.0.1:3000'}})));});
