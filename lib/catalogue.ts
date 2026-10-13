@@ -20,7 +20,7 @@ const entries: Entry[] = [
   ['The Serein Bracelet','Bracelets',32000,'Yellow gold','Lab-grown diamonds','Delicate bezel-set diamonds trace a fluid gold circle. Effortless radiance for your everyday rituals.'],
   ['Aurora Statement Earrings','Earrings',28900,'Yellow gold','None','Three sculptural teardrops catch the light as you move. Designed for your brightest evenings.'],
   ['The Promise Band','Rings',21500,'Yellow gold','None','A softly rounded, polished gold band. A simple circle with room for your own story.'],
-  ['Lumière Layered Chain','Necklaces',36900,'Yellow gold','None','Two fine chains and a little golden disc. A considered composition, ready to wear together.'],
+  ['Carla Layered Chain','Necklaces',36900,'Yellow gold','None','Two fine chains and a little golden disc. A considered composition, ready to wear together.'],
   ['The Muse Cuff','Bracelets',27500,'Yellow gold','None','An open cuff with flowing, asymmetric edges. Sculptural, expressive and entirely your own.'],
   ['Pearl Reverie Drops','Earrings',16900,'Yellow gold','Freshwater pearls','Luminous freshwater pearls suspended beneath little gold spheres. Soft elegance, beautifully understated.'],
   ['Rouge Halo Ring','Rings',58900,'Yellow gold','Ruby and lab-grown diamonds','An oval ruby framed by a delicate diamond halo. A small celebration of colour and light.'],

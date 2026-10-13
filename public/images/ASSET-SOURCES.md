@@ -37,3 +37,9 @@ Product 1 design: a pair of chunky, rounded, polished yellow gold hoop earrings.
 Editorial JPGs were downloaded to `editorial/` from Unsplash. Exact source IDs and download parameters are recorded in `scripts/download-editorial.mjs`. Google Fonts remains a remote font source. MediaPipe runtime and model sources are recorded in `scripts/download-tracking.mjs`; their files are served locally.
 
 The 24 GLBs in `public/models` were created procedurally by `scripts/create-design-models.ts`. They are illustrative design studies, not calibrated scans or exact replicas of the generated product images. Try-on placement cannot establish real fit, dimensions or occlusion.
+
+## Carla Diamonds supplied assets
+
+- `brand/carla-logo.jpg`, `app/icon.jpg` and `app/apple-icon.jpg`: original logo supplied by the store owner (`carla.jpg`), copied without alteration.
+- `carla/diamond-bracelet.webp` and `carla/diamond-bracelet-detail.webp`: original images exported from the owner-supplied public carousel https://www.instagram.com/carladiamonds/p/DZxbHeck6sI/ on 14 October 2026. These images are store media, not sample product photographs. No price or inventory was inferred from the post.
+- All 15 supplied reel links and the carousel link are recorded in `lib/instagram.ts` and rendered through Instagram embeds. The malformed combined link in the request was separated into `DbdI5e7zhHR` and `DaQMFeGzBQr`. Instagram serves the current content of these posts. Automatically discovering future posts is not configured; it requires a connected account/API or adding links to the manifest.

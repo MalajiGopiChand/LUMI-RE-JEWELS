@@ -1,4 +1,4 @@
-# LUMIÈRE JEWELS
+# CARLA DIAMONDS
 
 A Next.js / TypeScript jewellery storefront with an editorial design, sample catalogue, variant-aware bag, wishlist, guided or AI styling, protected administration, MongoDB persistence and Razorpay integration.
 
@@ -96,3 +96,9 @@ Python point-by-point tracking, setup and privacy details: [python/README.md](py
 ### Demo checkout
 
 The bag and checkout include photo order summaries, quantity/removal controls, saved pieces, responsive delivery fields and a demo-details shortcut. Sample checkout opens an explicitly labelled payment simulator with UPI, card and net banking choices. Success creates a session-only sample receipt; simulated failure and cancellation keep the bag for retry. No payment credentials are collected, no money is charged and no fulfilment is triggered. Live Razorpay checkout remains separate and requires configured services.
+
+### Carla Diamonds branding and store media
+
+The supplied logo drives the plum/ivory theme and is used for the site header, footer, payment gateway, browser icon, Apple icon and social metadata. Run `Start-Carla.cmd` locally. Existing browser-storage and authentication identifiers remain stable so saved bags and sessions survive the rebrand. The old layered-chain product URL redirects to its renamed page.
+
+`/store-stories` includes all 15 owner-supplied reels and the photo carousel, with video/photo filtering and progressive loading. The homepage features original store photographs plus three Instagram embeds. Embeds load directly from Instagram with a permanent original-post link when playback is restricted. This is a curated collection of current embeds, not an authenticated auto-sync of future posts. Add future links in `lib/instagram.ts`, or connect the store account before implementing an API-backed feed. Sample catalogue products remain labelled and are not presented as inventory inferred from Instagram.

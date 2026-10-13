@@ -181,7 +181,7 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
     }catch(e){if(current===generation.current){stop();setError((e as Error).name==='NotAllowedError'?'Camera access was declined. You can upload a photo or try a sample.':(e as Error).message);}}
   }
   function capture(){
-    try{if(!canvas.current)throw new Error('Choose a photo or start your camera first.');const a=document.createElement('a');a.download=`lumiere-${p.slug}-preview.png`;a.href=canvas.current.toDataURL('image/png');a.click();toast('Preview saved to your device.');}
+    try{if(!canvas.current)throw new Error('Choose a photo or start your camera first.');const a=document.createElement('a');a.download=`carla-diamonds-${p.slug}-preview.png`;a.href=canvas.current.toDataURL('image/png');a.click();toast('Preview saved to your device.');}
     catch(e){setError((e as Error).message||'The preview could not be saved.');}
   }
   function update(key:keyof Controls,value:boolean){setControls(c=>({...c,[key]:value}));}
@@ -201,7 +201,7 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
   }
   const fallback=<><JewelleryImage src={p.images[0]} alt={p.name}/><p className="canvas-note">The 3D model could not load. Product image shown.</p></>;
   return <>
-    <div className="page-title"><p className="eyebrow">THE LUMIÈRE DISCOVERY STUDIO</p><h1>{mode==='3d'?'Beauty, from every angle.':'Find your kind of radiance.'}</h1><p>{mode==='3d'?'Explore a design in three dimensions.':'Choose a piece. Preview it on a sample, a photo, or your camera.'}</p></div>
+    <div className="page-title"><p className="eyebrow">THE CARLA DIAMONDS DISCOVERY STUDIO</p><h1>{mode==='3d'?'Beauty, from every angle.':'Find your kind of radiance.'}</h1><p>{mode==='3d'?'Explore a design in three dimensions.':'Choose a piece. Preview it on a sample, a photo, or your camera.'}</p></div>
     <div className="studio-tabs"><Link className={mode==='ar'?'active':''} href={'/virtual-try-on?product='+p.id}><ScanFace size={16}/> Virtual try-on</Link><Link className={mode==='3d'?'active':''} href={'/viewer?product='+p.id}><RotateCcw size={16}/> 3D discovery</Link></div>
     {mode==='ar'&&<><FaceScan onBegin={stop} onClear={()=>{setScanResult(null);setProfile(null);setScanPhoto('');setPendingPhoto(null);clear();}} onComplete={completeScan}/>{edit&&<section className="section face-edit" aria-label="Face scan recommendations"><p className="eyebrow">YOUR PERSONAL FACE EDIT · {profile!.proportion.toUpperCase()} PROPORTIONS</p><h2>A little inspiration, shaped around you.</h2><p>{edit.reason} These are styling suggestions; choose what you love.</p><p className="muted">Earrings and necklaces use your scanned portrait. Rings and bracelets need a hand or wrist photo.</p><div className="studio-product-grid">{edit.products.map(item=><button key={item.id} onClick={()=>tryPiece(item)}><JewelleryImage src={item.images[0]} alt={item.name}/><span>{item.name}</span><small>{money(item.price)}</small><strong>Preview {item.category==='Rings'||item.category==='Bracelets'?'on hand':'on my photo'}</strong></button>)}</div></section>}</>}
     <section className="section studio-layout">

@@ -61,7 +61,7 @@ if(route==='wishlist'){const u=await session();if(!u)throw new HttpError(401,'Si
 
 if(route==='reviews'&&method==='GET'){if(!process.env.MONGODB_URI)return json([]);await db();return json(await Review.find({productId:url.searchParams.get('productId'),moderationStatus:'approved'}).select('rating text createdAt').lean());}
 
-if(route==='newsletter'&&method==='POST'){const b=z.object({email:z.string().email().max(254)}).parse(await body(req));if(!process.env.MONGODB_URI)throw new HttpError(503,'Newsletter subscriptions open when the store launches.');await db();await Content.updateOne({kind:'newsletter',key:b.email.toLowerCase()},{$set:{data:{email:b.email.toLowerCase(),consentAt:new Date()}}},{upsert:true});return json({message:'You’re on the list. Thank you for joining Lumière.'});}
+if(route==='newsletter'&&method==='POST'){const b=z.object({email:z.string().email().max(254)}).parse(await body(req));if(!process.env.MONGODB_URI)throw new HttpError(503,'Newsletter subscriptions open when the store launches.');await db();await Content.updateOne({kind:'newsletter',key:b.email.toLowerCase()},{$set:{data:{email:b.email.toLowerCase(),consentAt:new Date()}}},{upsert:true});return json({message:'You’re on the list. Thank you for joining Carla Diamonds.'});}
 
 if(route==='contact'&&method==='POST'){const b=z.object({name:z.string().min(2).max(100),email:z.string().email(),message:z.string().min(10).max(3000)}).parse(await body(req));await db();await Content.create({kind:'contact',key:randomUUID(),data:b});return json({message:'Your message has been received.'});}
 
