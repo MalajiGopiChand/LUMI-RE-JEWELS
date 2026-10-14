@@ -102,3 +102,8 @@ The bag and checkout include photo order summaries, quantity/removal controls, s
 The supplied logo drives the plum/ivory theme and is used for the site header, footer, payment gateway, browser icon, Apple icon and social metadata. Run `Start-Carla.cmd` locally. Existing browser-storage and authentication identifiers remain stable so saved bags and sessions survive the rebrand. The old layered-chain product URL redirects to its renamed page.
 
 `/store-stories` includes all 15 owner-supplied reels and the photo carousel, with video/photo filtering and progressive loading. The homepage features original store photographs plus three Instagram embeds. Embeds load directly from Instagram with a permanent original-post link when playback is restricted. This is a curated collection of current embeds, not an authenticated auto-sync of future posts. Add future links in `lib/instagram.ts`, or connect the store account before implementing an API-backed feed. Sample catalogue products remain labelled and are not presented as inventory inferred from Instagram.
+
+## Original Carla gallery update
+The homepage now uses a four-image campaign slideshow, with pause/previous/next controls and reduced-motion support. Store Stories displays 18 locally hosted original images, with category filters and an accessible enlarged-photo dialog. About uses the two supplied opening campaign photographs. Contact uses the public Instagram phone number and map link, plus a copyable enquiry composer (it does not claim to submit messages).
+
+Instagram currently rejects public reel downloads/embeds. No MP4 files were retrieved, so native reel autoplay is not active. Original MP4 exports are needed to complete this part; the broken embed cards have been removed.

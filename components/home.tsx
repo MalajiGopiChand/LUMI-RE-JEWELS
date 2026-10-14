@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {ArrowRight,Instagram,ScanFace,Diamond,Heart,Sparkles,MoveUpRight} from 'lucide-react';
 import {Shell,ProductCard} from './store';
 import {JewelleryImage} from './jewellery-image';
-import {InstagramGallery} from './instagram-gallery';
+import {InstagramGallery,CarlaSlideshow} from './instagram-gallery';
 import {categories,categoryHref,type Product} from '@/lib/catalogue';
 import {instagramProfile,storePosts} from '@/lib/instagram';
 import type {Banner} from '@/lib/content';
@@ -11,10 +11,7 @@ import type {Banner} from '@/lib/content';
 export function Home({products,banners=[]}:{products:Product[];banners?:Banner[]}){
  const campaign=banners[0];
  return <Shell>
-  <section className="carla-hero">
-   <div className="carla-hero-copy"><p className="eyebrow"><Diamond size={15}/> THE WORLD OF CARLA DIAMONDS</p><h1>{campaign?campaign.heading:<>Elegance<br/>beyond <em>time.</em></>}</h1><p>{campaign?.copy||'Exceptional details. Unforgettable moments. Discover the jewellery and stories of Carla Diamonds.'}</p><div className="carla-hero-actions"><Link className="button light" href={campaign?.href||'/store-stories'}>{campaign?.cta||'Discover our collection'}<ArrowRight size={16}/></Link><Link className="hero-secondary" href="/shop">Explore the boutique <MoveUpRight size={14}/></Link></div><a className="carla-hero-social" href={instagramProfile} target="_blank" rel="noopener noreferrer"><Instagram size={17}/><span>Our story, in the moment.<small>@carladiamonds</small></span><ArrowRight size={18}/></a></div>
-   <div className="carla-hero-photo"><JewelleryImage src={campaign?.image||'/images/carla/diamond-bracelet.webp'} alt="Original Carla Diamonds gold and diamond bracelet photograph" loading="eager" fetchPriority="high"/><a href={storePosts[15].url} target="_blank" rel="noopener noreferrer"><span>THE CARLA COLLECTION</span>Brilliance in every detail <ArrowRight size={15}/></a></div>
-  </section>
+  <CarlaSlideshow/>
   <div className="carla-brand-strip"><span><Diamond size={18}/> Jewellery with character</span><span><Heart size={18}/> Moments to treasure</span><span><Instagram size={18}/> Stories from our store</span></div>
   <InstagramGallery featured/>
   <section className="section carla-category-section"><div className="section-heading"><div><p className="eyebrow">EXPLORE THE BOUTIQUE</p><h2>A little brilliance. <em>Every day.</em></h2></div><Link className="text-link" href="/shop">Browse all jewellery <ArrowRight size={15}/></Link></div><div className="category-grid">{categories.map((c,i)=><Link key={c.name} href={categoryHref(c.name)} className="category-card"><div className="category-image"><JewelleryImage src={c.image} alt={c.name}/><span>0{i+1}</span></div><div><h3>{c.name}</h3><ArrowRight size={18}/></div><p>{c.note}</p></Link>)}</div><p className="sample-note">Explore illustrative designs in the demo boutique. Our original store collection appears in Store Stories.</p></section>
