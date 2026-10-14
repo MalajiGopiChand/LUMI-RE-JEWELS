@@ -22,6 +22,7 @@ import {productSchema} from '@/lib/validation';
 import {validateCart,createOrder,verifyPayment,markPaid} from '@/lib/commerce';
 
 import {ProductModel,Order,Customer,Review,Wishlist,AuditLog,Content,Coupon,InventoryMovement} from '@/models';
+import {findCustomerByEmail,findCustomerById,createCustomer,updateCustomerProfile,addCustomerAddress} from '@/lib/account-store';
 
 export const runtime='nodejs';
 
@@ -37,15 +38,19 @@ if(path[0]==='products'&&method==='GET'){const p=(await products()).find(p=>p.sl
 
 if(route==='categories')return json(categories);
 
-if(route==='config'&&method==='GET')return json({accounts:!!(process.env.MONGODB_URI&&process.env.SESSION_SECRET),sample:!process.env.MONGODB_URI,payments:!!(process.env.MONGODB_URI&&process.env.RAZORPAY_KEY_ID&&process.env.RAZORPAY_KEY_SECRET),ai:!!(process.env.OPENAI_API_KEY||process.env.GEMINI_API_KEY)});
+if(route==='config'&&method==='GET')return json({accounts:true,sample:!process.env.MONGODB_URI,payments:!!(process.env.MONGODB_URI&&process.env.RAZORPAY_KEY_ID&&process.env.RAZORPAY_KEY_SECRET),ai:!!(process.env.OPENAI_API_KEY||process.env.GEMINI_API_KEY)});
 
-if(route==='auth/session')return json({user:await session()});
+if(route==='auth/session'){const u=await session();if(!u)return json({user:null});const details=await findCustomerById(u.sub);return json({user:{sub:u.sub,role:u.role,email:u.email,name:details?.name||u.name||'Valued Customer',phone:details?.phone||u.phone||'',addresses:details?.addresses||[],createdAt:details?.createdAt||''}});}
 
 if(route==='auth/logout'&&method==='POST'){(await cookies()).delete('lumiere-session');return json({ok:true});}
 
-if(route==='auth/login'&&method==='POST'){await limit(req,'login',5);const b=z.object({email:z.string().email(),password:z.string().min(8).max(200)}).parse(await body(req));if(process.env.ADMIN_EMAIL&&b.email.toLowerCase()===process.env.ADMIN_EMAIL.toLowerCase()&&process.env.ADMIN_PASSWORD_HASH&&await bcrypt.compare(b.password,process.env.ADMIN_PASSWORD_HASH)){await signIn('admin','admin',b.email);return json({role:'admin'});}if(process.env.MONGODB_URI){await db();const c=await Customer.findOne({email:b.email.toLowerCase()});if(c?.passwordHash&&await bcrypt.compare(b.password,c.passwordHash)){await signIn(String(c._id),'customer',c.email);return json({role:'customer'});}}throw new HttpError(401,'Email or password is incorrect.');}
+if(route==='auth/login'&&method==='POST'){await limit(req,'login',10);const b=z.object({email:z.string().email(),password:z.string().min(6).max(200)}).parse(await body(req));if(process.env.ADMIN_EMAIL&&b.email.toLowerCase()===process.env.ADMIN_EMAIL.toLowerCase()&&process.env.ADMIN_PASSWORD_HASH&&await bcrypt.compare(b.password,process.env.ADMIN_PASSWORD_HASH)){await signIn('admin','admin',b.email,'Administrator','');return json({role:'admin',user:{sub:'admin',role:'admin',email:b.email,name:'Administrator'}});}const c=await findCustomerByEmail(b.email);if(c?.passwordHash&&await bcrypt.compare(b.password,c.passwordHash)){await signIn(c.id,'customer',c.email,c.name,c.phone);return json({role:'customer',user:{sub:c.id,role:'customer',email:c.email,name:c.name,phone:c.phone,addresses:c.addresses}});}throw new HttpError(401,'Email or password is incorrect.');}
 
-if(route==='auth/register'&&method==='POST'){await limit(req,'register',3);const b=z.object({name:z.string().min(2).max(100),email:z.string().email().max(254),password:z.string().min(12).max(72)}).parse(await body(req));await db();const c=await Customer.create({name:b.name,email:b.email.toLowerCase(),passwordHash:await bcrypt.hash(b.password,12)});await signIn(String(c._id),'customer',c.email);return json({ok:true},201);}
+if(route==='auth/register'&&method==='POST'){await limit(req,'register',10);const b=z.object({name:z.string().min(2).max(100),email:z.string().email().max(254),phone:z.string().optional().default(''),password:z.string().min(6).max(72)}).parse(await body(req));const c=await createCustomer(b);await signIn(c.id,'customer',c.email,c.name,c.phone);return json({ok:true,user:{sub:c.id,role:'customer',email:c.email,name:c.name,phone:c.phone,addresses:c.addresses}},201);}
+
+if(route==='account/profile'&&method==='PATCH'){const u=await session();if(!u)throw new HttpError(401,'Please sign in to update your profile.');const b=z.object({name:z.string().min(2).max(100).optional(),phone:z.string().max(20).optional()}).parse(await body(req));const updated=await updateCustomerProfile(u.sub,b);return json({ok:true,user:updated});}
+
+if(route==='account/address'&&method==='POST'){const u=await session();if(!u)throw new HttpError(401,'Please sign in to save an address.');const b=z.object({fullName:z.string().min(2).max(100),phone:z.string().min(10).max(15),street:z.string().min(5).max(200),city:z.string().min(2).max(100),state:z.string().min(2).max(100),pincode:z.string().min(6).max(10),isDefault:z.boolean().optional()}).parse(await body(req));const addresses=await addCustomerAddress(u.sub,b);return json({ok:true,addresses});}
 
 if(route==='cart/validate'&&method==='POST')return json(await validateCart(await body(req)));
 
