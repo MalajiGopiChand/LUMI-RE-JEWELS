@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState,Suspense,Component,type ReactNode} from 'react';
 import {Canvas} from '@react-three/fiber';
 import {OrbitControls,Environment,Lightformer,useGLTF,Center,Html} from '@react-three/drei';
-import {Camera,Upload,RotateCcw,Download,Trash2,Move,ArrowRight,ImagePlus,ShoppingBag,ScanFace} from 'lucide-react';
+import {Camera,Upload,RotateCcw,Download,Trash2,Move,ArrowRight,ImagePlus,ShoppingBag,ScanFace,FlipHorizontal} from 'lucide-react';
 import {useSearchParams} from 'next/navigation';
 import Link from 'next/link';
 import {type Product,money,categories} from '@/lib/catalogue';
@@ -30,6 +30,7 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
   const [category,setCategory]=useState('All');
   const p=products.find(p=>p.id===id)||products[0];
   const [error,setError]=useState(''),[busy,setBusy]=useState(false),[camera,setCamera]=useState(false);
+  const [facingMode,setFacingMode]=useState<'user'|'environment'>(p.category==='Earrings'||p.category==='Necklaces'?'user':'environment');
   const [photo,setPhoto]=useState(''),[status,setStatus]=useState('Choose a sample photo, upload a photo, or start your camera.');
   const [controls,setControls]=useState<Controls>(defaultControls),[assetReady,setAssetReady]=useState(false);
   const [modelKey,setModelKey]=useState(0),[demo,setDemo]=useState(false);
@@ -108,7 +109,11 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
       const proposedWidth=place.width*c.width;
       const width=Math.min(proposedWidth,place.maxHeight===undefined?proposedWidth:place.maxHeight*c.height/aspect),height=width*aspect;
       ctx.save();ctx.translate(place.x*c.width,place.y*c.height);ctx.rotate(place.rotation);
-      const originY=piece.category==='Necklaces'?-height*.08:piece.category==='Earrings'&&aspect>1.7?-height*.1:-height/2;
+      ctx.shadowColor='rgba(15,10,5,0.38)';
+      ctx.shadowBlur=Math.max(4,Math.round(width*.045));
+      ctx.shadowOffsetY=Math.max(2,Math.round(height*.035));
+      ctx.shadowOffsetX=0;
+      const originY=piece.category==='Necklaces'?-height*.08:piece.category==='Earrings'&&aspect>1.7?-height*.08:-height/2;
       ctx.drawImage(o.image,o.left,o.top,o.width,o.height,-width/2,originY,width,height);ctx.restore();
     }
   }
@@ -156,11 +161,13 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
     if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024){setError('Choose a JPEG, PNG or WebP under 10 MB.');return;}
     await photoFrom(URL.createObjectURL(file));
   }
-  async function start(){
+  async function start(targetMode?: 'user'|'environment'){
     clear();const current=generation.current;setBusy(true);setError('');
+    const modeToUse=targetMode||facingMode;
+    setFacingMode(modeToUse);
     try{
       if(!navigator.mediaDevices?.getUserMedia)throw new Error('This browser cannot open a camera. Upload a photo instead.');
-      const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:p.category==='Earrings'||p.category==='Necklaces'?'user':'environment',width:{ideal:960}},audio:false});
+      const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:modeToUse,width:{ideal:960}},audio:false});
       if(current!==generation.current){s.getTracks().forEach(t=>t.stop());return;}
       stream.current=s;running.current=true;setCamera(true);setStatus('Preparing local camera tracking…');
       await prepareCameraTracker(current);
@@ -172,13 +179,18 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
         if(v&&v.readyState>=2&&v.currentTime!==last){
           last=v.currentTime;
           if(tracker.current&&performance.now()-lastDetection>100){
-            lastDetection=performance.now();try{points.current=smoothLandmarks(points.current,extract(tracker.current.detectForVideo(v,lastDetection)));setStatus(points.current?'Following your position automatically.':'Move your face, shoulders or hand into view.');}catch{points.current=undefined;setStatus('Tracking lost. Move into view to realign.');}
+            lastDetection=performance.now();try{points.current=smoothLandmarks(points.current,extract(tracker.current.detectForVideo(v,lastDetection)));setStatus(points.current?'Following your position automatically.':'Move your face, neck or hands into view.');}catch{points.current=undefined;setStatus('Tracking lost. Move into view to realign.');}
           }
           draw(v);
         }
         frame.current=requestAnimationFrame(tick);
       };tick();
     }catch(e){if(current===generation.current){stop();setError((e as Error).name==='NotAllowedError'?'Camera access was declined. You can upload a photo or try a sample.':(e as Error).message);}}
+  }
+  function toggleCamera(){
+    const next=facingMode==='user'?'environment':'user';
+    setFacingMode(next);
+    if(camera)void start(next);
   }
   function capture(){
     try{if(!canvas.current)throw new Error('Choose a photo or start your camera first.');const a=document.createElement('a');a.download=`carla-diamonds-${p.slug}-preview.png`;a.href=canvas.current.toDataURL('image/png');a.click();toast('Preview saved to your device.');}
@@ -218,7 +230,17 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
           {p.sample&&<div className="studio-disclaimer">Concept preview · AI-created jewellery designs. Placement is approximate; use measurements for fit.</div>}
           {!p.tryOnAsset?<div className="notice">This piece has no try-on asset. Choose another piece to preview.</div>:<>
             <button className="button outline" disabled={!assetReady||busy} onClick={()=>photoFrom(p.category==='Rings'||p.category==='Bracelets'?'/images/editorial/hand-preview.png':'/images/editorial/portrait-preview.png',true)}><ImagePlus size={17}/> Try a sample photo</button>
-            <div className="studio-inputs"><button className="button" disabled={!assetReady||busy} onClick={camera?()=>{stop();setStatus('Camera stopped.');}:start}><Camera size={16}/>{camera?'Stop camera':busy?'Preparing…':'Start camera'}</button><label className={'button outline '+(!assetReady||busy?'disabled':'')}><Upload size={16}/> Upload photo<input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp" disabled={!assetReady||busy} onChange={e=>{const file=e.target.files?.[0];if(file)upload(file);e.target.value='';}}/></label></div>
+            <div className="studio-inputs">
+              <button className="button" disabled={!assetReady||busy} onClick={camera?()=>{stop();setStatus('Camera stopped.');}:()=>start()}><Camera size={16}/>{camera?'Stop camera':busy?'Preparing…':'Start camera'}</button>
+              {camera&&<button className="button outline" onClick={toggleCamera}><FlipHorizontal size={15}/> Switch ({facingMode==='user'?'Front':'Back'})</button>}
+              <label className={'button outline '+(!assetReady||busy?'disabled':'')}><Upload size={16}/> Upload photo<input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp" disabled={!assetReady||busy} onChange={e=>{const file=e.target.files?.[0];if(file)upload(file);e.target.value='';}}/></label>
+            </div>
+            {!camera&&<div style={{display:'flex',alignItems:'center',gap:'0.5rem',margin:'0.35rem 0',fontSize:'12px',color:'#78716c'}}>
+              <span>Camera lens:</span>
+              <button type="button" style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',textDecoration:facingMode==='user'?'underline':'none',fontWeight:facingMode==='user'?700:400,color:facingMode==='user'?'#2d1123':'#78716c'}} onClick={()=>setFacingMode('user')}>Front (Selfie / Face)</button>
+              <span>·</span>
+              <button type="button" style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',textDecoration:facingMode==='environment'?'underline':'none',fontWeight:facingMode==='environment'?700:400,color:facingMode==='environment'?'#2d1123':'#78716c'}} onClick={()=>setFacingMode('environment')}>Back (Hand / Neck)</button>
+            </div>}
             {!assetReady&&<small>Loading jewellery preview…</small>}
           </>}
           {active&&<div className="preview-adjustments"><h3>Aligned automatically.</h3><p className="muted" role="status">{status}</p>
