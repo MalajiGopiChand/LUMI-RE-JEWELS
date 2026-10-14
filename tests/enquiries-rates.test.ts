@@ -1,0 +1,6 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {enquiryText,whatsappUrl} from '../lib/enquiry';
+import {normalizeGoldQuote} from '../lib/gold-rate';
+test('WhatsApp enquiry preserves ring variant, quantity and safe URL encoding',()=>{const text=enquiryText([{name:'Ring & Pearl',sku:'R-12',size:'12',metal:'White gold',quantity:2,slug:'ring-pearl'}],'Asha','Is this available?','https://example.com');const url=new URL(whatsappUrl(text));assert.equal(url.hostname,'wa.me');assert.equal(url.pathname,'/917672021223');assert.equal(url.searchParams.get('text'),text);for(const part of ['R-12','Size: 12','Quantity: 2','https://example.com/product/ring-pearl','Asha'])assert.ok(text.includes(part));});
+test('gold quotes reject wrong currency, invalid prices and future timestamps',()=>{const now=Date.now(),q={metal:'XAU',currency:'INR',timestamp:Math.floor(now/1000),price_gram_24k:100,price_gram_22k:92,price_gram_18k:75};assert.equal(normalizeGoldQuote(q,now).rates['22K'],92);assert.throws(()=>normalizeGoldQuote({...q,currency:'USD'},now));assert.throws(()=>normalizeGoldQuote({...q,price_gram_24k:-1},now));assert.throws(()=>normalizeGoldQuote({...q,timestamp:q.timestamp+3600},now));});

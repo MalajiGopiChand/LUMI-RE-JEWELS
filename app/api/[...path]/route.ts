@@ -37,7 +37,7 @@ if(path[0]==='products'&&method==='GET'){const p=(await products()).find(p=>p.sl
 
 if(route==='categories')return json(categories);
 
-if(route==='config'&&method==='GET')return json({sample:!process.env.MONGODB_URI,payments:!!(process.env.MONGODB_URI&&process.env.RAZORPAY_KEY_ID&&process.env.RAZORPAY_KEY_SECRET),ai:!!(process.env.OPENAI_API_KEY||process.env.GEMINI_API_KEY)});
+if(route==='config'&&method==='GET')return json({accounts:!!(process.env.MONGODB_URI&&process.env.SESSION_SECRET),sample:!process.env.MONGODB_URI,payments:!!(process.env.MONGODB_URI&&process.env.RAZORPAY_KEY_ID&&process.env.RAZORPAY_KEY_SECRET),ai:!!(process.env.OPENAI_API_KEY||process.env.GEMINI_API_KEY)});
 
 if(route==='auth/session')return json({user:await session()});
 
