@@ -66,6 +66,25 @@ export function SideGoldRate(){
   const [weight,setWeight]=useState('10');
   const [karat,setKarat]=useState('22K');
   const [refreshing,setRefreshing]=useState(false);
+  const drawerRef=useRef<HTMLDivElement>(null);
+
+  useEffect(()=>{
+    if(!open)return;
+    const handleDown=(e:MouseEvent)=>{
+      if(drawerRef.current&&!drawerRef.current.contains(e.target as Node)){
+        setOpen(false);
+      }
+    };
+    const handleKey=(e:KeyboardEvent)=>{
+      if(e.key==='Escape')setOpen(false);
+    };
+    document.addEventListener('mousedown',handleDown);
+    document.addEventListener('keydown',handleKey);
+    return()=>{
+      document.removeEventListener('mousedown',handleDown);
+      document.removeEventListener('keydown',handleKey);
+    };
+  },[open]);
 
   const rate = q?.rates?.[karat] || (q?.rates?.['24K'] ? (karat==='22K'?q.rates['24K']*22/24:q.rates['24K']*18/24) : 0);
   const numWeight = Math.max(0, parseFloat(weight) || 0);
@@ -102,9 +121,21 @@ export function SideGoldRate(){
         )}
       </button>
 
-      {/* Floating Side Drawer */}
+      {/* Floating Side Drawer with Backdrop */}
       {open && (
-        <div className="side-gold-drawer" role="dialog" aria-modal="true" aria-label="Realtime Gold Rates and Calculator">
+        <>
+          <div 
+            className="side-gold-backdrop" 
+            onClick={()=>setOpen(false)}
+            aria-hidden="true"
+          />
+          <div 
+            ref={drawerRef}
+            className="side-gold-drawer" 
+            role="dialog" 
+            aria-modal="true" 
+            aria-label="Realtime Gold Rates and Calculator"
+          >
           <div className="drawer-header">
             <div>
               <div className="live-tag">
@@ -208,15 +239,23 @@ export function SideGoldRate(){
               >
                 Book Rate on WhatsApp ↗
               </a>
+              <button 
+                type="button" 
+                className="drawer-close-btn"
+                onClick={()=>setOpen(false)}
+              >
+                Close & Return to Website
+              </button>
               <small className="drawer-note">
                 Reference rates update continuously. Final billing includes exact weight, diamond/gemstone certification, and boutique making charges.
               </small>
             </div>
           </div>
         </div>
-      )}
-    </aside>
-  );
+      </>
+    )}
+  </aside>
+);
 }
 
 export function LivePrice({product}:{product:Product}){

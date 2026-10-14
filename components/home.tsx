@@ -16,7 +16,6 @@ export function Home({products,banners=[]}:{products:Product[];banners?:Banner[]
   <CarlaSlideshow/>
   <div className="carla-brand-strip"><span><Diamond size={18}/> Jewellery with character</span><span><Heart size={18}/> Moments to treasure</span><span><Instagram size={18}/> Stories from our store</span></div>
   
-  <GoldRate/>
   <FilmsPreview/>
   <InstagramGallery featured/>
   <section className="section carla-category-section"><div className="section-heading"><div><p className="eyebrow">EXPLORE THE BOUTIQUE</p><h2>A little brilliance. <em>Every day.</em></h2></div><Link className="text-link" href="/shop">Browse all jewellery <ArrowRight size={15}/></Link></div><div className="category-grid">{categories.map((c,i)=><Link key={c.name} href={categoryHref(c.name)} className="category-card"><div className="category-image"><JewelleryImage src={c.image} alt={c.name}/><span>0{i+1}</span></div><div><h3>{c.name}</h3><ArrowRight size={18}/></div><p>{c.note}</p></Link>)}</div><p className="sample-note">Explore illustrative designs in the demo boutique. Our original store collection appears in Store Stories.</p></section>
