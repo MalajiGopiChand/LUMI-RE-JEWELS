@@ -47,3 +47,6 @@ The 24 GLBs in `public/models` were created procedurally by `scripts/create-desi
 ## Additional original Carla photographs — 14 October 2026
 Downloaded unchanged from the public image resources of the user-supplied Instagram posts. The manifest in `lib/carla-media.ts` records each source post ID; original links use `https://www.instagram.com/carladiamonds/p/{postId}/`. All 15 distinct newly supplied posts are represented by 16 photographs; repeated user links were deduplicated. No real product prices or inventory are inferred.
 Contact telephone +91 76720 21223 and map link were read from the public @carladiamonds profile. Address and opening date were read from the caption of DF5vCdNToce. The contact composer copies a note for the visitor to send and does not submit to an unconfigured database.
+
+## Native reel playback — 14 October 2026
+All 15 reel URLs in lib/instagram.ts were downloaded using yt-dlp 2026.8.19 without login or cookies. Videos retain their original H.264 video and AAC audio; ffmpeg moved MP4 metadata to the beginning without re-encoding. Poster JPEGs are frames from each original video. Public assets are in public/videos/carla.

@@ -106,4 +106,6 @@ The supplied logo drives the plum/ivory theme and is used for the site header, f
 ## Original Carla gallery update
 The homepage now uses a four-image campaign slideshow, with pause/previous/next controls and reduced-motion support. Store Stories displays 18 locally hosted original images, with category filters and an accessible enlarged-photo dialog. About uses the two supplied opening campaign photographs. Contact uses the public Instagram phone number and map link, plus a copyable enquiry composer (it does not claim to submit messages).
 
-Instagram currently rejects public reel downloads/embeds. No MP4 files were retrieved, so native reel autoplay is not active. Original MP4 exports are needed to complete this part; the broken embed cards have been removed.
+All 15 supplied reels are now hosted locally as H.264/AAC MP4 files in public/videos/carla, with fast-start metadata and individual poster frames. Native players appear on Home, Store Stories and Contact. Visible films autoplay muted, pause offscreen, and respect reduced-motion preferences. Browser playback controls enable sound and manual playback. Future Instagram posts are not imported automatically.
+
+Image delivery honours per-component responsive sizes and uses quality 90. The homepage campaign frame fits the desktop viewport and shows the full portrait image on mobile.
