@@ -1,0 +1,8 @@
+python/
+.venv-vision/
+Start-Python-Vision.cmd
+Start-Carla.cmd
+Start-Lumiere.cmd
+tests/
+scripts/
+/preview*.jpg
