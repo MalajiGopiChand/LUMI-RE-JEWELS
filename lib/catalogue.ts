@@ -1,9 +1,11 @@
+import type {GoldPricing} from './gold-pricing';
 export type Variant = { sku: string; size: string; metal: string; price: number; stock: number };
 export type Product = {
   id: string; slug: string; name: string; category: string; description: string;
   metal: string; purity: string; weight: number; gemstones: string; images: string[];
   price: number; badge?: string; occasion: string[]; variants: Variant[];
   model3D?: string; tryOnAsset?: string; status: 'active' | 'draft'; sample?: boolean;
+  goldPricing?:GoldPricing;
 };
 export const images = {
   hero: '/images/editorial/campaign.jpg', earrings: '/images/products/lj-1.png',

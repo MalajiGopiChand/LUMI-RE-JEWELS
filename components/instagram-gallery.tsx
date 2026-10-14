@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
+import {ReelsGallery} from './reels-gallery';
 import {ArrowRight,ArrowLeft,Pause,Play,X,Expand} from 'lucide-react';
 import {carlaPhotos,type CarlaPhoto} from '@/lib/carla-media';
 import {JewelleryImage} from './jewellery-image';
@@ -21,4 +22,44 @@ export function InstagramGallery({featured=false}:{featured?:boolean}){
  const photos=featured?carlaPhotos.filter(p=>p.group==='collection').slice(0,6):carlaPhotos.filter(p=>filter==='all'||p.group===filter);
  return <section className="section carla-photo-gallery" id="store-stories"><div className="section-heading"><div><p className="eyebrow">THE CARLA COLLECTION</p><h2>Extraordinary details.<br/><em>Beautifully yours.</em></h2><p className="social-intro">Original jewellery and photographs from our store.</p></div>{featured&&<Link className="text-link" href="/store-stories">Explore the complete gallery <ArrowRight size={16}/></Link>}</div>{!featured&&<div className="social-filters" aria-label="Filter photographs">{[['all','All photographs'],['collection','Jewellery'],['campaign','Campaigns'],['about','Our story']].map(([value,label])=><button key={value} aria-pressed={filter===value} onClick={()=>setFilter(value)}>{label}</button>)}<span>{photos.length} photographs</span></div>}<div className="carla-photo-grid">{photos.map(p=><button className="carla-photo-card" key={p.id} onClick={()=>setSelected(p)} aria-label={'View '+p.title}><div><JewelleryImage src={p.src} alt={p.title} sizes="(max-width: 760px) 45vw, 30vw"/><span><Expand size={17}/></span></div><h3>{p.title}</h3><small>CARLA DIAMONDS</small></button>)}</div>{selected&&<PhotoViewer photo={selected} onClose={()=>setSelected(null)}/>}</section>
 }
-export function StoreStories(){return <><div className="page-title carla-page-title"><p className="eyebrow">OUR JEWELLERY. OUR STORIES.</p><h1>A closer look at Carla.</h1><p>Discover the collection, campaign portraits and moments that make us Carla Diamonds.</p></div><InstagramGallery/><section className="carla-closing"><h2>Find a piece that feels <em>like you.</em></h2><Link className="button" href="/contact">Speak with our boutique <ArrowRight size={16}/></Link></section></>}
+export function StoreStories(){
+  return (
+    <>
+      <div className="page-title carla-page-title">
+        <p className="eyebrow">THE VIJAYAWADA BOUTIQUE · STORE STORIES & FILMS</p>
+        <h1>A closer look at Carla Diamonds.</h1>
+        <p>Step inside our world of fine jewellery. Explore our collection in motion, campaign portraits, and original store creations.</p>
+      </div>
+
+      {/* Boutique Visit Banner */}
+      <section className="boutique-spotlight" aria-label="Visit our boutique">
+        <div className="boutique-spotlight-content">
+          <p className="eyebrow">OUR FLAGSHIP BOUTIQUE</p>
+          <h2>Experience the brilliance in person.</h2>
+          <p>Located in Brindavan Colony, Vijayawada, our showroom showcases natural diamonds, certified hallmarked 22K & 18K gold, and bespoke bridal masterpieces.</p>
+          <div className="boutique-spotlight-actions">
+            <a className="button" href="https://maps.app.goo.gl/64YkeNiW1xZKoDz46" target="_blank" rel="noopener noreferrer">
+              Get Directions on Maps ↗
+            </a>
+            <Link className="button outline" href="/contact">
+              Plan Your Visit & Appointment <ArrowRight size={16}/>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Autoplaying Reels Gallery */}
+      <ReelsGallery/>
+
+      {/* Photographic Editorial Gallery */}
+      <InstagramGallery/>
+
+      <section className="carla-closing">
+        <h2>Find a piece that feels <em>like you.</em></h2>
+        <p>Speak directly with our jewellery designers and master craftsmen on WhatsApp.</p>
+        <Link className="button" href="/contact">Speak with our boutique <ArrowRight size={16}/></Link>
+      </section>
+    </>
+  );
+}
+

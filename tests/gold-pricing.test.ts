@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {jewelleryEstimate,metalEstimate,type GoldPricing} from '../lib/gold-pricing';
+import {productSchema} from '../lib/validation';
+import {sampleProducts} from '../lib/catalogue';
+const rates={'24K':10000,'22K':9200,'18K':7500};
+const pricing:GoldPricing={enabled:true,netGoldWeight:4,stoneWeight:1,stoneValue:10000,makingCharge:10,makingChargeType:'percent',taxPercent:3};
+const product={...sampleProducts[0],goldPricing:pricing};
+test('estimate uses net gold weight, separate stone value, making charge and tax',()=>{assert.deepEqual(jewelleryEstimate(product,rates),{metal:30000,making:3000,stones:10000,tax:1290,total:44290});assert.equal(jewelleryEstimate({...product,goldPricing:{...pricing,stoneWeight:200}},rates)?.total,44290)});
+test('fixed and per gram charges, disabled estimates, 14K derived rate and invalid weights',()=>{assert.equal(jewelleryEstimate({...product,goldPricing:{...pricing,makingChargeType:'fixed',makingCharge:1000}},rates)?.total,42230);assert.equal(jewelleryEstimate({...product,goldPricing:{...pricing,makingChargeType:'perGram',makingCharge:500}},rates)?.total,43260);assert.equal(jewelleryEstimate({...product,goldPricing:{...pricing,enabled:false}},rates),null);assert.equal(metalEstimate({...product,purity:'14K',weight:1},rates),5833.33);assert.equal(metalEstimate({...product,weight:-1},rates),null);assert.equal(metalEstimate(product,{}),null)});
+test('admin validation preserves complete pricing and rejects invalid inputs',()=>{assert.deepEqual(productSchema.parse(product).goldPricing,pricing);for(const change of [{netGoldWeight:0},{stoneValue:-1},{taxPercent:101},{makingChargeType:'invalid'}])assert.equal(productSchema.safeParse({...product,goldPricing:{...pricing,...change}}).success,false);assert.equal(productSchema.safeParse({...product,purity:'9K'}).success,false);assert.equal(productSchema.safeParse({...product,metal:'Silver'}).success,false)});
