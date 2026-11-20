@@ -6,6 +6,8 @@ export type Product = {
   price: number; badge?: string; occasion: string[]; variants: Variant[];
   model3D?: string; tryOnAsset?: string; status: 'active' | 'draft'; sample?: boolean;
   goldPricing?:GoldPricing;
+  collectionIds?:string[];
+  tryOnCalibration?:{scale?:number;offset?:[number,number,number];rotation?:[number,number,number];paired?:boolean};
 };
 export const images = {
   hero: '/images/editorial/campaign.jpg', earrings: '/images/products/lj-1.png',

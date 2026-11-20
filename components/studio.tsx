@@ -13,6 +13,8 @@ import {FaceScan} from './face-scan';
 import {faceEdit,type FaceProfile} from '@/lib/face-style';
 import {visionPoints,type VisionResult} from '@/lib/vision';
 import {LandmarkReport} from './landmark-report';
+import type {TryOnRenderer} from '@/lib/try-on-renderer';
+import {createLocalTracker,type LocalTracker} from '@/lib/try-on-tracker';
 
 class ModelBoundary extends Component<{children:ReactNode;fallback:ReactNode},{failed:boolean}>{
   state={failed:false};static getDerivedStateFromError(){return {failed:true};}
@@ -20,8 +22,8 @@ class ModelBoundary extends Component<{children:ReactNode;fallback:ReactNode},{f
 }
 function Model({url}:{url:string}){const {scene}=useGLTF(url);return <Center><primitive object={scene}/></Center>;}
 type Overlay={image:HTMLImageElement;left:number;top:number;width:number;height:number};
-type Controls={show:boolean};
-const defaultControls:Controls={show:true};
+type Controls={show:boolean;scale:number;offsetX:number;offsetY:number};
+const defaultControls:Controls={show:true,scale:1,offsetX:0,offsetY:0};
 
 export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
   const params=useSearchParams(),{add,toast}=useStore();
@@ -30,9 +32,12 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
   const [category,setCategory]=useState('All');
   const p=products.find(p=>p.id===id)||products[0];
   const [error,setError]=useState(''),[busy,setBusy]=useState(false),[camera,setCamera]=useState(false);
-  const [facingMode,setFacingMode]=useState<'user'|'environment'>(p.category==='Earrings'||p.category==='Necklaces'?'user':'environment');
+  const [facingMode,setFacingMode]=useState<'user'|'environment'>(p?.category==='Earrings'||p?.category==='Necklaces'?'user':'environment');
   const [photo,setPhoto]=useState(''),[status,setStatus]=useState('Choose a sample photo, upload a photo, or start your camera.');
   const [controls,setControls]=useState<Controls>(defaultControls),[assetReady,setAssetReady]=useState(false);
+  const renderer=useRef<TryOnRenderer|null>(null),renderVersion=useRef(0);
+  const [renderMode,setRenderMode]=useState<'3d'|'image'>('3d'),[modelReady,setModelReady]=useState(false);
+  const renderChoice=useRef(renderMode);renderChoice.current=renderMode;
   const [modelKey,setModelKey]=useState(0),[demo,setDemo]=useState(false);
   const [profile,setProfile]=useState<FaceProfile|null>(null),[scanPhoto,setScanPhoto]=useState('');
   const [pendingPhoto,setPendingPhoto]=useState<{id:string;url:string;data?:VisionResult}|null>(null);
@@ -41,11 +46,30 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
   const loadedAssetId=useRef('');
   const video=useRef<HTMLVideoElement>(null),canvas=useRef<HTMLCanvasElement>(null);
   const stream=useRef<MediaStream|null>(null),frame=useRef(0),generation=useRef(0),running=useRef(false);
-  const tracker=useRef<any>(null),source=useRef<HTMLImageElement|null>(null),overlay=useRef<Overlay|null>(null),points=useRef<Point[]|undefined>(undefined);
+  const tracker=useRef<LocalTracker|null>(null),source=useRef<HTMLImageElement|null>(null),overlay=useRef<Overlay|null>(null),points=useRef<Point[]|undefined>(undefined);
   const options=useRef(controls);options.current=controls;
   const selected=useRef(p);selected.current=p;
   const engineKind=useRef(''),trackerVersion=useRef(0);
   const pointsVisible=useRef(showPoints);pointsVisible.current=showPoints;
+
+  useEffect(()=>{
+    if(!p||mode!=='ar'||renderMode!=='3d')return;
+    let disposed=false;const version=++renderVersion.current;setModelReady(false);
+    void (async()=>{
+      try{
+        if(!renderer.current){const {TryOnRenderer}=await import('@/lib/try-on-renderer');if(disposed)return;renderer.current=new TryOnRenderer();}
+        const loaded=await renderer.current.load(p);
+        if(disposed||version!==renderVersion.current||!loaded)return;
+        setModelReady(true);if(source.current)draw(source.current);
+      }catch(e){if(!disposed){setError((e as Error).message+' You can select Photo overlay instead.');setModelReady(false);if(p.tryOnAsset){setRenderMode('image');setStatus('3D is unavailable on this device. Photo overlay is active.');}}}
+    })();
+    return()=>{disposed=true;};
+  },[p?.id,p?.model3D,renderMode,mode]);
+  useEffect(()=>()=>{renderVersion.current++;renderer.current?.dispose();renderer.current=null;},[]);
+  useEffect(()=>{
+    const pause=()=>{if(document.hidden&&running.current){stop();setStatus('Camera stopped while the page is hidden. Press Start camera to resume.');}};
+    document.addEventListener('visibilitychange',pause);return()=>document.removeEventListener('visibilitychange',pause);
+  },[]);
 
   function stop(){
     generation.current++;trackerVersion.current++;running.current=false;
@@ -83,6 +107,7 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
 
   useEffect(()=>{
     setControls(defaultControls);setError('');
+    if(!p)return;
     if(camera&&engineKind.current!==trackerKind(p.category))void prepareCameraTracker(generation.current);
     else if(source.current){
       if(previewVision.current){points.current=visionPoints(previewVision.current,p.category);setStatus(points.current?'Aligned to your detected landmarks.':'Show the body area for this piece and scan again.');draw(source.current);}
@@ -94,21 +119,26 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
     const c=canvas.current;if(!c)return;
     const w=src instanceof HTMLVideoElement?src.videoWidth:src.naturalWidth,h=src instanceof HTMLVideoElement?src.videoHeight:src.naturalHeight;
     if(!w||!h)return;
-    const ratio=Math.min(1,1600/w,1600/h);c.width=Math.round(w*ratio);c.height=Math.round(h*ratio);
+    const ratio=Math.min(1,1600/w,1600/h);const targetW=Math.round(w*ratio),targetH=Math.round(h*ratio);if(c.width!==targetW||c.height!==targetH){c.width=targetW;c.height=targetH;}
     const ctx=c.getContext('2d')!;ctx.drawImage(src,0,0,c.width,c.height);
     if(previewVision.current&&pointsVisible.current){
       const result=previewVision.current;
       const groups=[...result.faces.map(points=>({points,color:'#5eead4',radius:1.5,checkVisibility:false})),...result.hands.map(h=>({points:h.landmarks,color:'#fbbf24',radius:3,checkVisibility:false})),...result.poses.map(p=>({points:p.landmarks,color:'#a78bfa',radius:3,checkVisibility:true}))];
       for(const group of groups){ctx.fillStyle=group.color;for(const point of group.points){if(group.checkVisibility&&point.visibility!==undefined&&point.visibility<.5)continue;ctx.beginPath();ctx.arc(point.x*c.width,point.y*c.height,group.radius,0,Math.PI*2);ctx.fill();}}
     }
-    const o=overlay.current,v=options.current;if(!o||!v.show)return;
+    const v=options.current;
+    if(renderChoice.current==='3d'){
+      try{renderer.current?.draw(ctx,selected.current,points.current,{scale:v.scale,screenOffset:[v.offsetX,v.offsetY]},v.show);}catch{setError('3D rendering stopped. Select Photo overlay or reload this page.');}
+      return;
+    }
+    const o=overlay.current;if(!o||!v.show)return;
     const piece=selected.current;
     const places=placement(piece.category,points.current,{width:c.width,height:c.height},true);
     for(const place of places){
       const aspect=o.height/o.width;
-      const proposedWidth=place.width*c.width;
+      const proposedWidth=place.width*c.width*v.scale;
       const width=Math.min(proposedWidth,place.maxHeight===undefined?proposedWidth:place.maxHeight*c.height/aspect),height=width*aspect;
-      ctx.save();ctx.translate(place.x*c.width,place.y*c.height);ctx.rotate(place.rotation);
+      ctx.save();ctx.translate((place.x+v.offsetX)*c.width,(place.y+v.offsetY)*c.height);ctx.rotate(place.rotation);
       ctx.shadowColor='rgba(15,10,5,0.38)';
       ctx.shadowBlur=Math.max(4,Math.round(width*.045));
       ctx.shadowOffsetY=Math.max(2,Math.round(height*.035));
@@ -117,21 +147,18 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
       ctx.drawImage(o.image,o.left,o.top,o.width,o.height,-width/2,originY,width,height);ctx.restore();
     }
   }
-  useEffect(()=>{if(source.current&&!camera)draw(source.current);},[controls,assetReady,id,photo,camera,showPoints]);
+  useEffect(()=>{if(source.current&&!camera)draw(source.current);},[controls,assetReady,id,photo,camera,showPoints,renderMode,modelReady]);
 
   async function init(videoMode:boolean,kind=trackerKind(selected.current.category)){
-    const vision=await import('@mediapipe/tasks-vision');
-    const files=await vision.FilesetResolver.forVisionTasks('/mediapipe/wasm');
-    const settings={baseOptions:{modelAssetPath:`/mediapipe/${kind}.task`},runningMode:(videoMode?'VIDEO':'IMAGE') as 'VIDEO'|'IMAGE'};
-    return kind==='face'?vision.FaceLandmarker.createFromOptions(files,settings):kind==='pose'?vision.PoseLandmarker.createFromOptions(files,settings):vision.HandLandmarker.createFromOptions(files,settings);
+    return createLocalTracker(videoMode,kind);
   }
-  function extract(result:any):Point[]|undefined{return (result.faceLandmarks||result.landmarks)?.[0];}
+
   async function prepareCameraTracker(current:number){
     const version=++trackerVersion.current,kind=trackerKind(selected.current.category);
     engineKind.current=kind;points.current=undefined;tracker.current?.close();tracker.current=null;
     setBusy(true);setStatus('Finding landmarks for this piece…');
     try{const engine=await init(true,kind);if(current!==generation.current||version!==trackerVersion.current){engine.close();return;}tracker.current=engine;}
-    catch{if(current===generation.current&&version===trackerVersion.current)setStatus('Tracking could not load. Try a photo or restart the camera.');}
+    catch{if(current===generation.current&&version===trackerVersion.current)setStatus('Tracking could not load. Stop and restart the camera to retry.');}
     finally{if(current===generation.current&&version===trackerVersion.current)setBusy(false);}
   }
   async function trackPhoto(current:number){
@@ -141,8 +168,11 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
     try{
       const engine=await init(false,kind);
       if(current!==generation.current||version!==trackerVersion.current){engine.close();return;}
-      try{points.current=extract(engine.detect(image));}finally{engine.close();}
-      setStatus(points.current?'Aligned to your detected landmarks.':'No landmarks found. Use a clear photo showing your face, shoulders or hand.');
+      const input=document.createElement('canvas'),ratio=Math.min(1,1280/image.naturalWidth,1280/image.naturalHeight);
+      input.width=Math.round(image.naturalWidth*ratio);input.height=Math.round(image.naturalHeight*ratio);
+      input.getContext('2d')!.drawImage(image,0,0,input.width,input.height);
+      try{points.current=engine.detect(input);}finally{engine.close();}
+      setStatus(placement(selected.current.category,points.current,{width:image.naturalWidth,height:image.naturalHeight},true).length?'Aligned to your detected landmarks.':'No reliable anchors found. Use a clear photo showing your face, shoulders or hand.');
     }catch{if(current===generation.current&&version===trackerVersion.current){points.current=undefined;setStatus('Tracking could not load. Try scanning or choose another photo.');}}
     finally{if(current===generation.current&&version===trackerVersion.current){setBusy(false);draw(image);}}
   }
@@ -178,8 +208,8 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
         const v=video.current;
         if(v&&v.readyState>=2&&v.currentTime!==last){
           last=v.currentTime;
-          if(tracker.current&&performance.now()-lastDetection>100){
-            lastDetection=performance.now();try{points.current=smoothLandmarks(points.current,extract(tracker.current.detectForVideo(v,lastDetection)));setStatus(points.current?'Following your position automatically.':'Move your face, neck or hands into view.');}catch{points.current=undefined;setStatus('Tracking lost. Move into view to realign.');}
+          if(tracker.current&&performance.now()-lastDetection>66){
+            lastDetection=performance.now();try{points.current=smoothLandmarks(points.current,tracker.current.detectForVideo(v,lastDetection));setStatus(placement(selected.current.category,points.current,{width:v.videoWidth,height:v.videoHeight},true).length?'Following your position automatically.':'Move your face, shoulders or hand into view.');}catch{points.current=undefined;setStatus('Tracking lost. Move into view to realign.');}
           }
           draw(v);
         }
@@ -196,7 +226,7 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
     try{if(!canvas.current)throw new Error('Choose a photo or start your camera first.');const a=document.createElement('a');a.download=`carla-diamonds-${p.slug}-preview.png`;a.href=canvas.current.toDataURL('image/png');a.click();toast('Preview saved to your device.');}
     catch(e){setError((e as Error).message||'The preview could not be saved.');}
   }
-  function update(key:keyof Controls,value:boolean){setControls(c=>({...c,[key]:value}));}
+  function update<K extends keyof Controls>(key:K,value:Controls[K]){setControls(c=>({...c,[key]:value}));}
   if(!p)return <section className="empty"><h1>Your collection is being prepared.</h1><Link className="button" href="/shop">Browse jewellery</Link></section>;
   const active=camera||!!photo;
   const edit=profile?faceEdit(profile,products):null;
@@ -221,19 +251,21 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
         {mode==='3d'&&p.model3D?<ModelBoundary key={p.id+modelKey} fallback={fallback}>
           <Canvas camera={{position:[0,0,5],fov:40}}><color attach="background" args={['#f1ece5']}/><ambientLight intensity={1.2}/><directionalLight position={[4,4,4]} intensity={4}/><directionalLight position={[-3,2,2]} intensity={2}/><Suspense fallback={<Html center><span className="notice">Loading design…</span></Html>}><Model url={p.model3D}/></Suspense><Environment resolution={128}><Lightformer intensity={3} position={[0,3,3]} scale={[5,5,1]}/><Lightformer intensity={2} position={[-4,1,1]} rotation={[0,Math.PI/2,0]} scale={[5,3,1]}/></Environment><OrbitControls enablePan={false} minDistance={1} maxDistance={15}/></Canvas>
           <span className="canvas-note"><Move size={14}/> Drag to rotate · Scroll to zoom</span>
-        </ModelBoundary>:mode==='ar'&&active?<><video ref={video} muted playsInline className="tracking-video"/><canvas ref={canvas} aria-label="Jewellery preview"/><span className="canvas-note">{demo?'Sample model · ':''}{status}</span></>:<><JewelleryImage src={p.images[0]} alt={p.name}/><span className="canvas-note">{mode==='3d'?'Product image':'Your preview starts here · Camera is off'}</span></>}
+        </ModelBoundary>:mode==='ar'&&active?<><video ref={video} muted playsInline className="tracking-video" aria-hidden="true"/><canvas ref={canvas} aria-label="Jewellery preview"/><span className="canvas-note">{demo?'Sample model · ':''}{status}</span></>:<><JewelleryImage src={p.images[0]} alt={p.name}/><span className="canvas-note">{mode==='3d'?'Product image':'Your preview starts here · Camera is off'}</span></>}
       </div><p className="studio-privacy">{scanResult?"Python scan frames are processed in memory by the vision service. Clear your scan and photo whenever you like.":"Browser previews keep photos and camera frames on this device. Clear your photo whenever you like."}</p></div>
       <div className="studio-controls"><p className="eyebrow">YOUR CHOSEN PIECE</p>
         <div className="form-grid"><label>Category<select value={category} onChange={e=>{setCategory(e.target.value);const found=products.find(p=>e.target.value==='All'||p.category===e.target.value);if(found)tryPiece(found);}}>{['All',...categories.map(c=>c.name)].map(c=><option key={c}>{c}</option>)}</select></label><label>Select jewellery<select value={id} onChange={e=>{const found=products.find(p=>p.id===e.target.value);if(found)tryPiece(found);}}>{products.filter(p=>category==='All'||p.category===category).map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label></div>
         <h2>{p.name}</h2><strong>{money(p.price)}</strong><p>{p.description}</p>
         {mode==='ar'?<>
+          <label>Preview style<select value={renderMode} onChange={e=>{setError('');setRenderMode(e.target.value as '3d'|'image');}}><option value="3d">Live 3D jewellery</option><option value="image">Photo overlay</option></select></label>
+          <div className="tryon-category-tabs" aria-label="Try-on categories">{['Earrings','Necklaces','Bracelets','Rings'].map(c=><button key={c} aria-pressed={p.category===c} onClick={()=>{const piece=products.find(item=>item.category===c);if(piece)tryPiece(piece);}}>{c==='Bracelets'?'Bangles & bracelets':c}</button>)}</div>
           {p.sample&&<div className="studio-disclaimer">Concept preview · AI-created jewellery designs. Placement is approximate; use measurements for fit.</div>}
-          {!p.tryOnAsset?<div className="notice">This piece has no try-on asset. Choose another piece to preview.</div>:<>
-            <button className="button outline" disabled={!assetReady||busy} onClick={()=>photoFrom(p.category==='Rings'||p.category==='Bracelets'?'/images/editorial/hand-preview.png':'/images/editorial/portrait-preview.png',true)}><ImagePlus size={17}/> Try a sample photo</button>
+          {!p.tryOnAsset&&!p.model3D?<div className="notice">This piece has no try-on asset. Choose another piece to preview.</div>:<>
+            <button className="button outline" disabled={(renderMode==='3d'?!modelReady:!assetReady)||busy} onClick={()=>photoFrom(p.category==='Rings'||p.category==='Bracelets'?'/images/editorial/hand-preview.png':'/images/editorial/portrait-preview.png',true)}><ImagePlus size={17}/> Try a sample photo</button>
             <div className="studio-inputs">
-              <button className="button" disabled={!assetReady||busy} onClick={camera?()=>{stop();setStatus('Camera stopped.');}:()=>start()}><Camera size={16}/>{camera?'Stop camera':busy?'Preparing…':'Start camera'}</button>
+              <button className="button" disabled={!camera&&busy} onClick={camera?()=>{clear();setStatus('Camera stopped.');}:()=>start()}><Camera size={16}/>{camera?'Stop camera':busy?'Preparing…':'Start camera'}</button>
               {camera&&<button className="button outline" onClick={toggleCamera}><FlipHorizontal size={15}/> Switch ({facingMode==='user'?'Front':'Back'})</button>}
-              <label className={'button outline '+(!assetReady||busy?'disabled':'')}><Upload size={16}/> Upload photo<input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp" disabled={!assetReady||busy} onChange={e=>{const file=e.target.files?.[0];if(file)upload(file);e.target.value='';}}/></label>
+              <label className={'button outline '+((renderMode==='3d'?!modelReady:!assetReady)||busy?'disabled':'')}><Upload size={16}/> Upload photo<input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp" disabled={(renderMode==='3d'?!modelReady:!assetReady)||busy} onChange={e=>{const file=e.target.files?.[0];if(file)upload(file);e.target.value='';}}/></label>
             </div>
             {!camera&&<div style={{display:'flex',alignItems:'center',gap:'0.5rem',margin:'0.35rem 0',fontSize:'12px',color:'#78716c'}}>
               <span>Camera lens:</span>
@@ -241,15 +273,19 @@ export function Studio({products,mode}:{products:Product[];mode:'3d'|'ar'}){
               <span>·</span>
               <button type="button" style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',textDecoration:facingMode==='environment'?'underline':'none',fontWeight:facingMode==='environment'?700:400,color:facingMode==='environment'?'#2d1123':'#78716c'}} onClick={()=>setFacingMode('environment')}>Back (Hand / Neck)</button>
             </div>}
-            {!assetReady&&<small>Loading jewellery preview…</small>}
+            {(renderMode==='3d'?!modelReady:!assetReady)&&<small>Loading jewellery preview…</small>}
           </>}
-          {active&&<div className="preview-adjustments"><h3>Aligned automatically.</h3><p className="muted" role="status">{status}</p>
+          {active&&<div className="preview-adjustments"><h3>Preview fit.</h3>
+            <label>Fit scale · {Math.round(controls.scale*100)}%<input type="range" min="0.5" max="1.8" step="0.025" value={controls.scale} onChange={e=>update('scale',Number(e.target.value))}/></label>
+            <label>Horizontal adjustment<input type="range" min="-0.2" max="0.2" step="0.005" value={controls.offsetX} onChange={e=>update('offsetX',Number(e.target.value))}/></label>
+            <label>Vertical adjustment<input type="range" min="-0.2" max="0.2" step="0.005" value={controls.offsetY} onChange={e=>update('offsetY',Number(e.target.value))}/></label>
+            <button className="text-link" onClick={()=>setControls(defaultControls)}><RotateCcw size={15}/> Reset fit</button><p className="muted" role="status">{status}</p>
             {previewVision.current&&<label className="check-row"><input type="checkbox" checked={showPoints} onChange={e=>setShowPoints(e.target.checked)}/> Show detected points</label>}
             <div className="studio-inputs"><button className="button outline" onClick={()=>update('show',!controls.show)}>{controls.show?'Before / without jewellery':'After / with jewellery'}</button><button className="button outline" onClick={capture}><Download size={15}/> Save preview</button></div>
             {photo&&!previewVision.current&&<button className="text-link" disabled={busy} onClick={()=>trackPhoto(generation.current)}>Scan photo again</button>}
             <button className="text-link" onClick={()=>{setScanResult(null);setProfile(null);setScanPhoto('');setPendingPhoto(null);clear();}}><Trash2 size={15}/> Clear photo & stop camera</button>
           </div>}
-          <small>Camera permission is requested only when you press Start camera. Tracking does not verify size, skin tone, fit or occlusion.</small>
+          <small>Camera permission is requested only when you press Start camera. 3D fitting is estimated from visible landmarks. Hair and body occlusion are not reconstructed. Confirm physical sizes from product measurements.</small>
         </>:<><div className="studio-disclaimer">{p.sample?'Illustrative 3D design study · Shape and proportions are approximate.':'Lighting and screen colour may vary. Confirm dimensions in the product details.'}</div><button className="button outline" onClick={()=>setModelKey(k=>k+1)}><RotateCcw size={16}/> Reset view</button></>}
         {error&&<p className="error" role="alert">{error}</p>}
         <div className="studio-purchase"><Link className="button" href={'/product/'+p.slug}>Choose size & details <ArrowRight size={16}/></Link>{p.category!=='Rings'&&<button className="button outline" onClick={()=>add(p)}><ShoppingBag size={16}/> Add to bag</button>}</div>

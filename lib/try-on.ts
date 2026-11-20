@@ -1,16 +1,19 @@
 export type Point={x:number;y:number;z?:number;visibility?:number};
+export type TrackedPoints=Point[]&{face?:Point[]};
 export type Placement={x:number;y:number;width:number;rotation:number;maxHeight?:number};
 type Frame={width:number;height:number};
 const usable=(p:Point|undefined)=>!!p&&Number.isFinite(p.x)&&Number.isFinite(p.y);
 
-export function trackerKind(category:string){
-  return category==='Earrings'||category==='Necklaces'?'face':'hand';
+export function trackerKind(category:string):'face'|'pose'|'hand'{
+  return category==='Earrings'?'face':category==='Necklaces'?'pose':'hand';
 }
 
-export function smoothLandmarks(previous:Point[]|undefined,next:Point[]|undefined,alpha=.45):Point[]|undefined{
+export function smoothLandmarks(previous:TrackedPoints|undefined,next:TrackedPoints|undefined,alpha=.45):TrackedPoints|undefined{
   if(!next)return undefined;
   if(!previous||previous.length!==next.length)return next;
-  return next.map((p,i)=>({...p,x:previous[i].x+(p.x-previous[i].x)*alpha,y:previous[i].y+(p.y-previous[i].y)*alpha}));
+  const result:TrackedPoints=next.map((p,i)=>({...p,x:previous[i].x+(p.x-previous[i].x)*alpha,y:previous[i].y+(p.y-previous[i].y)*alpha,...(p.z===undefined?{}:{z:(previous[i].z??p.z)+(p.z-(previous[i].z??p.z))*alpha})}));
+  if(next.face)result.face=smoothLandmarks(previous.face,next.face,alpha);
+  return result;
 }
 
 export function placement(category:string,points:Point[]|undefined,frame:Frame={width:1,height:1},strict=false):Placement[]{
@@ -43,15 +46,27 @@ export function placement(category:string,points:Point[]|undefined,frame:Frame={
   }
 
   if(category==='Necklaces'){
+    const face=(points as TrackedPoints|undefined)?.face;
+    if(face){
+      const faceFit=placement(category,face,frame,true)[0];
+      if(faceFit){
+        if(has(11,12)&&[11,12].every(i=>(points![i].visibility??1)>=.5)){
+          const l=pixel(11),r=pixel(12),chin=face[152];
+          const span=Math.hypot(r.x-l.x,r.y-l.y);
+          return [{...faceFit,x:chin.x*.55+(l.x+r.x)/2/frame.width*.45,y:chin.y*.55+(l.y+r.y)/2/frame.height*.45,width:Math.min(faceFit.width,span*.5/frame.width)}];
+        }
+        return [faceFit];
+      }
+    }
     // Case 1: Pose shoulders detected (points.length <= 33)
-    if(has(11,12)){
+    if(points&&points.length<=33&&has(11,12)){
       const visible=[11,12].every(i=>points![i].visibility===undefined||points![i].visibility!>=.5);
       const l=pixel(11),r=pixel(12),span=Math.hypot(r.x-l.x,r.y-l.y);
       if(visible&&span>0){
         let rotation=Math.atan2(r.y-l.y,r.x-l.x);
         if(rotation>Math.PI/2)rotation-=Math.PI;
         if(rotation< -Math.PI/2)rotation+=Math.PI;
-        return [output((l.x+r.x)/2+Math.sin(rotation)*span*.1,(l.y+r.y)/2-Math.cos(rotation)*span*.1,span*.62,rotation,span*.7)];
+        return [output((l.x+r.x)/2+Math.sin(rotation)*span*.18,(l.y+r.y)/2-Math.cos(rotation)*span*.18,span*.42,rotation,span*.45)];
       }
       if(strict&&points!.length<=33)return [];
     }
@@ -64,10 +79,10 @@ export function placement(category:string,points:Point[]|undefined,frame:Frame={
         const ux=(r.x-l.x)/span,uy=(r.y-l.y)/span,dx=(chin.x-top.x)/height,dy=(chin.y-top.y)/height;
         const rotation=Math.atan2(uy,ux);
         // Position necklace naturally around user's neck below chin
-        const neckX=chin.x+dx*height*.42;
-        const neckY=chin.y+dy*height*.42;
-        const chainWidth=span*1.55;
-        const chainMaxHeight=height*.95;
+        const neckX=chin.x+dx*height*.18;
+        const neckY=chin.y+dy*height*.18;
+        const chainWidth=span*1.05;
+        const chainMaxHeight=height*.8;
         return [output(neckX,neckY,chainWidth,rotation,chainMaxHeight)];
       }
     }

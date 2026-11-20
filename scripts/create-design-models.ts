@@ -13,15 +13,17 @@ for(const p of sampleProducts){
   const torus=(r:number,t:number,arc=Math.PI*2)=>new THREE.TorusGeometry(r,t,12,64,arc);
   const sphere=(r:number)=>new THREE.SphereGeometry(r,24,16);
   if(p.category==='Rings'){
-    part(torus(.85,p.gemstones==='None'?.09:.045),0,[0,0,0],[1,1,1],[.55,.18,0]);
-    if(p.gemstones!=='None')part(p.gemstones.includes('pearl')?sphere(.23):new THREE.OctahedronGeometry(.27,0),p.gemstones.includes('pearl')?2:1,[0,.69,.43],[1,p.gemstones.includes('Ruby')||p.gemstones.includes('Sapphire')?1.2:1,1]);
-    if(p.name.includes('Entwined'))part(torus(.86,.048),0,[0,.02,.05],[1,1,1],[.65,.1,.12]);
+    part(torus(.85,p.gemstones==='None'?.09:.045),0,[0,0,0],[1,1,1],[0,0,0]);
+    if(p.gemstones!=='None')part(p.gemstones.includes('pearl')?sphere(.23):new THREE.OctahedronGeometry(.27,0),p.gemstones.includes('pearl')?2:1,[0,.85,.10],[1,p.gemstones.includes('Ruby')||p.gemstones.includes('Sapphire')?1.2:1,1]);
+    if(p.name.includes('Entwined'))part(torus(.86,.048),0,[0,.02,.05],[1,1,1],[0,0,.12]);
   }else if(p.category==='Necklaces'){
-    if(p.gemstones==='Freshwater pearls')for(let j=0;j<48;j++){const a=j/48*Math.PI*2;part(sphere(.056),2,[Math.cos(a)*.8,Math.sin(a)*1.2,0]);}
-    else part(torus(.9,.013),0,[0,0,0],[.9,1.4,1]);
-    if(p.name.includes('Layered'))part(torus(.7,.012),0,[0,.2,0],[.9,1.4,1]);
-    if(p.gemstones!=='Freshwater pearls')part(p.gemstones==='None'?sphere(.16):new THREE.OctahedronGeometry(.18,0),p.gemstones==='None'?0:1,[0,-1.18,.02],[1,1.15,.3]);
-    if(p.name.includes('Lariat'))part(new THREE.CylinderGeometry(.01,.01,.6,8),0,[0,-1.55,0]);
+    // Front drape: the rear chain is behind the neck, not a second oval on the chest.
+    const chain=new THREE.CatmullRomCurve3([new THREE.Vector3(-.72,.6,0),new THREE.Vector3(-.62,-.05,.08),new THREE.Vector3(0,-.85,.16),new THREE.Vector3(.62,-.05,.08),new THREE.Vector3(.72,.6,0)]);
+    if(p.gemstones==='Freshwater pearls')for(let j=0;j<42;j++){const v=chain.getPoint(j/41);part(sphere(.045),2,v.toArray());}
+    else part(new THREE.TubeGeometry(chain,96,.018,8,false));
+    if(p.name.includes('Layered'))part(new THREE.TubeGeometry(chain,96,.014,8,false),0,[0,-.2,.02],[.9,1,1]);
+    if(p.gemstones!=='Freshwater pearls')part(p.gemstones==='None'?sphere(.12):new THREE.OctahedronGeometry(.15,0),p.gemstones==='None'?0:1,[0,-.92,.18],[1,1.15,.3]);
+    if(p.name.includes('Lariat'))part(new THREE.CylinderGeometry(.014,.014,.5,8),0,[0,-1.2,.16]);
   }else if(p.category==='Earrings'){
     for(const x of [-.6,.6]){
       if(p.name.includes('Hoop')||p.name.includes('Huggie'))part(torus(.39,p.name.includes('Solstice')?.11:.045),0,[x,0,0],[1,1.15,1],[.08,.5,0]);
@@ -32,7 +34,7 @@ for(const p of sampleProducts){
     }
   }else{
     if(p.name.includes('Pearl'))for(let j=0;j<24;j++){const a=j/24*Math.PI*2;part(sphere(.11),j%4===0?0:2,[Math.cos(a)*.9,Math.sin(a)*.9,0]);}
-    else part(torus(.9,p.name.includes('Cuff')?.18:.055,p.name.includes('Cuff')?Math.PI*1.7:Math.PI*2),0,[0,0,0],[1,1,.65],[.45,0,0]);
+    else part(torus(.9,p.name.includes('Cuff')?.18:.055,p.name.includes('Cuff')?Math.PI*1.7:Math.PI*2),0,[0,0,0],[1,1,1],[0,0,0]);
     if(p.gemstones.includes('diamond')||p.gemstones.includes('Emerald'))for(let j=0;j<(p.gemstones.includes('Emerald')?3:32);j++){const a=j/(p.gemstones.includes('Emerald')?3:32)*Math.PI*2;part(new THREE.OctahedronGeometry(.075,0),1,[Math.cos(a)*.9,Math.sin(a)*.9,.035]);}
   }
   const chunks:Buffer[]=[],views:any[]=[],accessors:any[]=[],gltfMeshes:any[]=[],nodes:any[]=[];let offset=0;

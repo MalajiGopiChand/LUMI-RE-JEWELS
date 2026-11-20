@@ -12,3 +12,6 @@ tests/**
 scripts
 scripts/**
 /preview*.jpg
+
+.data
+.data/**

@@ -55,7 +55,7 @@ function getSmartAdvice(userText:string, quoteRates?:Record<string,number>):{mes
       sampleProducts.find(p=>p.slug.includes('diamond-huggie')) || sampleProducts[19],
     ];
     return {
-      message: `Here are our most celebrated natural diamond creations, handcrafted for timeless radiance:\n\n1. Éclat Diamond Ring (${money(diamondItems[0].price)}) — A brilliant round solitaire on a fine 18K white gold band. A luminous symbol of something lasting.\n2. The Serein Bracelet (${money(diamondItems[1].price)}) — Bezel-set natural diamonds tracing a fluid 18K gold circle.\n3. Diamond Huggie Hoops (${money(diamondItems[2].price)}) — Everyday luxury with a seamless row of brilliant-cut diamonds.\n\nEach diamond is ethically sourced and verified for exceptional cut and sparkle. Tap any piece below to view details or try them in our Virtual Try-On Studio!`,
+      message: `Here are our most celebrated natural diamond creations, handcrafted for timeless radiance:\n\n1. Éclat Diamond Ring (${money(diamondItems[0].price)}) — A brilliant round solitaire on a fine 18K white gold band. A luminous symbol of something lasting.\n2. The Serein Bracelet (${money(diamondItems[1].price)}) — Bezel-set natural diamonds tracing a fluid 18K gold circle.\n3. Diamond Huggie Hoops (${money(diamondItems[2].price)}) — Everyday luxury with a seamless row of brilliant-cut diamonds.\n\nEach diamond is ethically sourced and verified for exceptional cut and sparkle. Tap any piece below to view details!`,
       products: diamondItems.map(toSug),
       whatsapp: whatsappUrl(`Hello Carla Diamonds, I am interested in your diamond jewellery and solitaires. Please share certification details and options.`)
     };
@@ -103,7 +103,7 @@ function getSmartAdvice(userText:string, quoteRates?:Record<string,number>):{mes
   // 8. General / Fallback Query
   const generalItems = [sampleProducts[6], sampleProducts[1], sampleProducts[3]];
   return {
-    message: `Welcome to Carla Diamonds! We craft fine jewellery in hallmarked 18K & 22K gold, natural diamonds, rings, chains, bracelets, and earrings.\n\n• Today's Live Rates: 22K: ${r22}/g · 18K: ${r18}/g\n• Custom sizing, virtual 3D try-on, and bridal consultations available.\n\nTake a look at our featured pieces below, tell me what occasion or style you have in mind, or click the WhatsApp button to chat directly with our boutique specialist!`,
+    message: `Welcome to Carla Diamonds! We craft fine jewellery in hallmarked 18K & 22K gold, natural diamonds, rings, chains, bracelets, and earrings.\n\n• Today's Live Rates: 22K: ${r22}/g · 18K: ${r18}/g\n• Custom sizing and bridal consultations available.\n\nTake a look at our featured pieces below, tell me what occasion or style you have in mind, or click the WhatsApp button to chat directly with our boutique specialist!`,
     products: generalItems.map(toSug),
     whatsapp: whatsappUrl(`Hello Carla Diamonds, I would like help choosing jewellery: "${userText}"`)
   };

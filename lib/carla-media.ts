@@ -1,4 +1,4 @@
-export type CarlaPhoto={id:string;postId:string;src:string;title:string;group:string};
+export type CarlaPhoto={id:string;postId:string;src:string;title:string;description?:string;group:string};
 export const carlaPhotos:CarlaPhoto[]=[
   {
     "id": "DZxbf9wTSDS-1",

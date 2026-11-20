@@ -8,7 +8,7 @@ export function FaceScan({onComplete,onClear,onBegin}:{onComplete:(profile:FaceP
   const [open,setOpen]=useState(false),[live,setLive]=useState(false),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
   const [facing,setFacing]=useState<'user'|'environment'>('user');
   const video=useRef<HTMLVideoElement>(null),stream=useRef<MediaStream|null>(null),generation=useRef(0);
-  const [usePython,setUsePython]=useState(true);
+  const [usePython,setUsePython]=useState(false);
 
   function stop(){
     generation.current++;

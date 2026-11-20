@@ -1,9 +1,10 @@
 import {cookies} from 'next/headers';
 import {SignJWT,jwtVerify} from 'jose';
-import {createHash,timingSafeEqual,createHmac} from 'node:crypto';
+import {createHash,timingSafeEqual,createHmac,randomBytes} from 'node:crypto';
 import {db} from './db';
 import {RateLimit} from '@/models';
-export function secret(){const s=process.env.SESSION_SECRET||'carla-diamonds-secure-vault-session-key-32chars-2026';return new TextEncoder().encode(s);}
+const developmentSecret=randomBytes(48).toString('hex');
+export function secret(){const s=process.env.SESSION_SECRET;if(!s&&process.env.NODE_ENV==='production')throw new Error('SESSION_SECRET is not configured.');return new TextEncoder().encode(s||developmentSecret);}
 export async function session(){try{const c=(await cookies()).get('lumiere-session');if(!c)return null;return(await jwtVerify(c.value,secret(),{issuer:'lumiere'})).payload as {sub:string;role:string;email:string;name?:string;phone?:string};}catch{return null;}}
 export async function signIn(sub:string,role:string,email:string,name?:string,phone?:string){const token=await new SignJWT({role,email,name:name||'',phone:phone||''}).setProtectedHeader({alg:'HS256'}).setSubject(sub).setIssuer('lumiere').setIssuedAt().setExpirationTime('8h').sign(secret());(await cookies()).set('lumiere-session',token,{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',path:'/',maxAge:28800});}
 export async function admin(){const user=await session();if(user?.role!=='admin')throw new HttpError(401,'Administrator sign-in required.');return user;}
