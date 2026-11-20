@@ -31,7 +31,7 @@ SESSION_SECRET=your-strong-random-secret
 
 The project URL is the base URL, without `/rest/v1/`. The Supabase secret key must never have a `NEXT_PUBLIC_` prefix. No password or secret key is committed. In dotenv files, escape dollar signs in bcrypt hashes; Vercel's variable editor accepts the raw hash.
 
-The current administrator account is configured in the private local environment. Customer accounts use bcrypt hashes in the private `carla_customers` table and the website's signed HTTP-only session cookie; they are separate from Supabase Dashboard logins and Supabase Auth users. Public/publishable API keys cannot read customer records or invoke write functions.
+Run `npm run setup:admin` from a trusted server/workspace with the private admin email and bcrypt hash configured. This stores a hashed administrator record in the RLS-protected Supabase content table. Once a database administrator exists, it takes precedence over bootstrap environment credentials. No plaintext password is stored. Customer accounts use bcrypt hashes in the private `carla_customers` table and the website's signed HTTP-only session cookie; they are separate from Supabase Dashboard logins and Supabase Auth users. Public/publishable API keys cannot read customer records or invoke write functions.
 
 `npm run seed` initializes the existing 24 labelled sample products once. It preserves an existing catalogue and never repopulates a catalogue after an administrator deletes all products. Replace sample prices and illustrative images with verified store inventory before accepting purchases.
 

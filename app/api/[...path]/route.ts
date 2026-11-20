@@ -1,5 +1,6 @@
 import {NextResponse} from 'next/server';
 import {managedAdmin,mediaResponse} from '@/lib/admin-api';
+import {verifyAdministrator} from '@/lib/admin-auth';
 
 import {cookies} from 'next/headers';
 
@@ -45,7 +46,7 @@ if(route==='auth/session'){const u=await session();if(!u)return json({user:null}
 
 if(route==='auth/logout'&&method==='POST'){(await cookies()).delete('lumiere-session');return json({ok:true});}
 
-if(route==='auth/login'&&method==='POST'){await limit(req,'login',10);const b=z.object({email:z.string().email(),password:z.string().min(6).max(200)}).parse(await body(req));if(process.env.ADMIN_EMAIL&&b.email.toLowerCase()===process.env.ADMIN_EMAIL.toLowerCase()&&process.env.ADMIN_PASSWORD_HASH&&await bcrypt.compare(b.password,process.env.ADMIN_PASSWORD_HASH)){await signIn('admin','admin',b.email,'Administrator','');return json({role:'admin',user:{sub:'admin',role:'admin',email:b.email,name:'Administrator'}});}const c=await findCustomerByEmail(b.email);if(c?.passwordHash&&await bcrypt.compare(b.password,c.passwordHash)){await signIn(c.id,'customer',c.email,c.name,c.phone);return json({role:'customer',user:{sub:c.id,role:'customer',email:c.email,name:c.name,phone:c.phone,addresses:c.addresses}});}throw new HttpError(401,'Email or password is incorrect.');}
+if(route==='auth/login'&&method==='POST'){await limit(req,'login',10);const b=z.object({email:z.string().email(),password:z.string().min(6).max(200)}).parse(await body(req));if(await verifyAdministrator(b.email,b.password)){await signIn('admin','admin',b.email,'Administrator','');return json({role:'admin',user:{sub:'admin',role:'admin',email:b.email,name:'Administrator'}});}const c=await findCustomerByEmail(b.email);if(c?.passwordHash&&await bcrypt.compare(b.password,c.passwordHash)){await signIn(c.id,'customer',c.email,c.name,c.phone);return json({role:'customer',user:{sub:c.id,role:'customer',email:c.email,name:c.name,phone:c.phone,addresses:c.addresses}});}throw new HttpError(401,'Email or password is incorrect.');}
 
 if(route==='auth/register'&&method==='POST'){await limit(req,'register',10);const b=z.object({name:z.string().min(2).max(100),email:z.string().email().max(254),phone:z.string().optional().default(''),password:z.string().min(6).max(72)}).parse(await body(req));const c=await createCustomer(b);await signIn(c.id,'customer',c.email,c.name,c.phone);return json({ok:true,user:{sub:c.id,role:'customer',email:c.email,name:c.name,phone:c.phone,addresses:c.addresses}},201);}
 
