@@ -76,3 +76,8 @@ The Supabase integration check creates clearly named temporary records, verifies
 ## Deployment
 
 Push to the GitHub `main` branch connected to the Carla Diamonds Vercel project. This project requires verified commits: use signed Git commits or GitHub's verified web editor. Set production environment variables before deployment. Verify `/admin` login, an image upload, draft/publish/delete, public category pages, and the hidden studio redirects on the deployed domain. Credentials and local uploaded data are excluded from Git and deployment packages.
+
+
+## Saved SQL Editor query
+
+[Carla Diamonds - Supabase setup](https://supabase.com/dashboard/project/xtarpbqfgaykxhuqqoqf/sql/1b70091b-44de-4676-91cc-3e385e21bc60) contains the executed setup query. The readable, re-runnable source is kept in `supabase/setup.sql`.
