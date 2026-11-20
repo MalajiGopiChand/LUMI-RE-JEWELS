@@ -152,3 +152,8 @@ Open `/admin` to manage jewellery. Products support multiple photographs, catego
 For local development, admin data and uploads persist in ignored `.data/`. Live hosting requires `MONGODB_URI`; products and settings use MongoDB and uploaded images use GridFS. The first connection initializes an empty database with the existing labelled sample catalogue once; deleting all products does not repopulate it. An existing populated database is preserved. Local filesystem writes are rejected in production, preventing false success on ephemeral hosting.
 
 Administrator credentials are server-only `ADMIN_EMAIL` and bcrypt `ADMIN_PASSWORD_HASH`. The supplied account was configured in ignored local `.env.local`; no password or session secret is committed. Set those values and a random `SESSION_SECRET` of at least 32 characters in Vercel before using live administration. Set `APP_URL` to the production domain if used. In dotenv files, escape dollar signs in bcrypt hashes; Vercel's environment editor accepts the raw hash. Database and image storage settings must be configured independently of Git deployment. Test admin sign-in, image upload, publication and deletion after deployment.
+
+
+### Verified deployment updates
+
+Keep verified commits enabled in Vercel. Publish with a signed Git commit or GitHub's verified web editor. Production administration requires the server environment settings described above.
