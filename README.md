@@ -1,159 +1,78 @@
-# CARLA DIAMONDS
+# Carla Diamonds
 
-A Next.js / TypeScript jewellery storefront with an editorial design, sample catalogue, variant-aware bag, wishlist, guided or AI styling, protected administration, MongoDB persistence and Razorpay integration.
+A Next.js 16 / React / TypeScript jewellery storefront with a protected boutique manager, Supabase Postgres, Supabase Storage, catalogue styling, and optional Razorpay checkout.
 
-## Run locally
+## Local setup
 
 ```powershell
-
-npm install
-
+npm ci
 Copy-Item .env.example .env.local
-
 npm run dev
-
 ```
 
-Open http://127.0.0.1:3000. Without configuration, browsing, search, filters, product pages, local bag/wishlist and the guided stylist work. Sample imagery and prices are explicitly labelled. A no-payment sample checkout, local photo try-on and illustrative 3D models work without credentials. Real payments, account creation and persistent submissions require configured services.
+Open http://127.0.0.1:3000. Administration is at `/admin`.
+Do not overwrite an existing `.env.local`; it contains private local configuration.
+
+## Supabase setup
+
+1. Open your project SQL Editor: https://supabase.com/dashboard/project/xtarpbqfgaykxhuqqoqf/sql/new
+2. Paste and run `supabase/setup.sql`. It creates only `carla_*` application tables and functions, enables RLS, restricts database access to the app server, and creates the `carla-jewellery` photo bucket. The script is re-runnable and does not drop existing data.
+3. Configure the server environment locally and in Vercel:
+
+```dotenv
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SECRET_KEY=your-server-secret-key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+ADMIN_EMAIL=your-admin-email
+ADMIN_PASSWORD_HASH=your-bcrypt-hash
+SESSION_SECRET=your-strong-random-secret
+```
+
+The project URL is the base URL, without `/rest/v1/`. The Supabase secret key must never have a `NEXT_PUBLIC_` prefix. No password or secret key is committed. In dotenv files, escape dollar signs in bcrypt hashes; Vercel's variable editor accepts the raw hash.
+
+The current administrator account is configured in the private local environment. Customer accounts use bcrypt hashes in the private `carla_customers` table and the website's signed HTTP-only session cookie; they are separate from Supabase Dashboard logins and Supabase Auth users. Public/publishable API keys cannot read customer records or invoke write functions.
+
+`npm run seed` initializes the existing 24 labelled sample products once. It preserves an existing catalogue and never repopulates a catalogue after an administrator deletes all products. Replace sample prices and illustrative images with verified store inventory before accepting purchases.
+
+## Boutique manager
+
+- Create, edit, publish, draft and delete jewellery.
+- Upload up to eight JPEG/PNG/WebP photographs per piece, up to 4 MB each.
+- Set necklaces, earrings, rings or bracelets; select New Arrival status.
+- Manage prices, metal, purity, weight, gemstones, sizes and stock.
+- Create collections and assign jewellery to them.
+- Publish page headings, descriptions, body text and cover photographs.
+- Add, hide, edit and delete Store Stories and homepage campaign photographs.
+- Keep try-on content archived without exposing it to customers.
+
+Production data uses Supabase exclusively. Product photos are delivered by Supabase Storage. Products, site settings, customer records, wishlists, reviews, newsletter subscriptions, contact messages and orders are persisted in Postgres. Database requests go through the Next.js server and existing role checks. No MongoDB dependency or connection is required.
+
+Before Supabase is configured, local development can store catalogue edits and accounts in ignored `.data/`. Production rejects filesystem writes. A failed Supabase request never silently falls back to local storage.
+
+## Payments and styling
+
+Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` to enable live checkout. Configure the `payment.captured` webhook at `/api/webhooks/razorpay`. Checkout totals and stock are revalidated inside the Postgres reservation transaction. Row locks protect the final stock unit, and payment processing is idempotent. Inventory is restored if payment-provider order creation fails. Abandoned reservations still require provider reconciliation; no automatic refund or fulfilment is claimed.
+
+With no payment provider configured, the interface identifies unavailable checkout or clearly labelled sample mode. Never enter real card details in the sample simulator.
+
+Set `OPENAI_API_KEY` or `GEMINI_API_KEY` to enable optional AI styling; otherwise the stylist uses labelled catalogue filtering. `GOLD_API_TOKEN` enables indicative server-side gold rates. Provider failures never fabricate rates or successful payments.
+
+## Archived virtual try-on
+
+Virtual try-on and the 3D viewer are removed from public navigation, cards, product pages and homepage promotion. Former studio/viewer URLs redirect to `/shop`. Their source, GLB designs and local tracking assets remain in the repository for future use and are not imported by the storefront.
+
+## Verification
 
 ```powershell
-
 npm run typecheck
-
 npm test
-
 npm run build
-
-npm start
-
+npm run verify:supabase
 ```
 
-## Connect services
-
-- **MongoDB:** Set `MONGODB_URI` to a replica set / Atlas connection. Transactions are required for checkout and stock changes. Run `npm run seed` to insert samples without overwriting existing records. Replace all samples with verified real product data before launch.
-
-- **Authentication:** Set a random `SESSION_SECRET` of at least 32 characters, `ADMIN_EMAIL` and a bcrypt `ADMIN_PASSWORD_HASH`. The admin login is at `/admin`. Customer registration uses password hashing and an HTTP-only, signed session. Sessions expire after eight hours. There is no password-reset email flow yet.
-
-- **Razorpay:** Set test keys and webhook secret. Configure `/api/webhooks/razorpay` for `payment.captured`. Configure automatic capture in Razorpay. The browser callback verifies its signature and retrieves capture status; only captured payments with matching amount/currency mark orders paid. Inventory and coupon reservations use MongoDB transactions. Use a test merchant account before enabling live keys.
-
-- **AI:** Set `AI_PROVIDER=openai` or `gemini`, the corresponding key, and optionally a model. Keys stay server-side. The server shortlists available catalogue variants within budget and validates returned IDs. With no key, the stylist clearly uses a deterministic guided mode. Photo analysis intentionally returns unavailable.
-
-- **Cloudinary:** Set the three Cloudinary environment variables to enable protected image/GLB upload. Images are limited to 10 MB with type and magic-byte checks. Attach uploaded URLs to the actual product's `images`, `model3D` or `tryOnAsset` fields.
-
-- **APP_URL:** Must match the exact browser origin, including the port. Set it to your HTTPS production URL when deploying. Trust `x-forwarded-for` only from a proxy that overwrites it; rate limits are stored in MongoDB when configured.
-
-## 3D and local virtual try-on
-
-The 3D viewer includes 24 local illustrative GLB designs, orbit controls, zoom, reset and a local studio lighting environment. Sample models are explicitly labelled approximate design studies. For real products, supply calibrated GLBs with correct scale/origin. Asset failures fall back to product photography.
-
-The studio uses MediaPipe face, pose or hand landmarks for earrings, necklaces, rings or bracelets. Camera permission follows an explicit click. In browser mode, uploaded JPEG/PNG/WebP images are processed in-browser and are not submitted to an API. Python scan mode sends captured frames to the local Python vision service; see python/README.md. Placement, size and rotation follow detected landmarks automatically. Lost tracking hides the ornament until landmarks return. Switching pieces keeps the camera running and changes the detector when needed. Before/after comparison, PNG capture and deletion controls are provided. MediaPipe runtime and face, hand and pose models are served locally. AI-generated face and hand sample photos let you try the studio without granting camera access. Only products with a `tryOnAsset` enable preview controls. This initial placement algorithm needs per-product calibration, occlusion work, real assets and device testing before production. It cannot verify fit or dimensions.
-
-## Administration
-
-Admin APIs enforce the signed administrator role on every request. The dashboard reports captured revenue and actual records. Products/variants, orders, coupons and review moderation are editable. Media uploads and audit logs are supported. Scheduled hero campaigns are validated and read from the database on each homepage request. Generic content/configuration records are editable as JSON; they are drafts unless specifically consumed by the storefront. Secrets must be configured in the environment, never stored in the editor.
-
-## Order lifecycle and operational limits
-
-- Authoritative prices, stock, quantities and coupons are validated server-side. Duplicate SKUs are rejected. Totals use integer paise.
-
-- Creation reserves inventory transactionally before contacting Razorpay. Provider creation failure releases the reservation. Each create request has a unique idempotency key; duplicate submission keys are rejected.
-
-- Captured webhooks are authenticated and idempotent, and amount/currency are checked. Guests access orders with a random private token stored in their browser session; account holders can access orders created under their own signed customer ID (unverified email addresses do not grant access to guest orders).
-
-- Reservations for abandoned payment windows are deliberately **not automatically released**: doing so without reconciling the provider could oversell after delayed capture. A production reconciliation worker and refund workflow are required. `expiresAt` is advisory metadata, not a TTL deletion index.
-
-- Payment notifications, password reset, account deletion automation, advanced tax/shipping, production returns/refunds and multi-device guest-order recovery remain launch work. No email delivery is claimed. Contact/newsletter records are persisted when MongoDB is configured.
-
-- Review display only uses approved persisted records; there are no fabricated testimonials. Merchant identity, policies, product certifications and contact details must be finalized before sales.
-
-## Assets
-
-The catalogue has 24 unique local AI-generated product images, six each for necklaces, earrings, rings and bracelets. Category pages, new arrivals and collection edits are separate routes. Next Image optimizes local catalogue and editorial assets, and a local fallback handles missing images. Editorial Unsplash photos are saved locally; only Google Fonts needs an external request. See [asset sources and generation prompts](public/images/ASSET-SOURCES.md). Replace concept assets and sample prices with verified merchant data before launch.
+The Supabase integration check creates clearly named temporary records, verifies product writes, duplicate references, concurrent last-stock reservation, stock release, amount checks, duplicate payment events, image storage and anonymous-access restrictions, then removes its test records. It never makes a real payment.
 
 ## Deployment
 
-Deploy this standard Next.js app to Vercel or a Node host with access to MongoDB and the configured providers. It has not been published automatically: the requested Mongoose/transactional MongoDB backend needs a compatible Node runtime. Set environment variables, deploy with HTTPS, initialize indexes, configure Razorpay webhooks, and perform the integration tests below first.
-
-## Live-service acceptance checks
-
-The offline test suite checks money, schemas and signature verification. With actual service credentials, additionally verify concurrent purchases of the last stock unit, coupon exhaustion, database rollback on payment-provider failure, duplicate webhooks, wrong signature/currency/amount, delayed capture, account isolation, unauthorized admin access and uploaded asset failures. Test camera permission denial, stop/unmount cleanup, face/hand/pose tracking and mobile performance with calibrated assets. These live checks cannot be passed using sample records alone.
-
-
-## Verified in this workspace
-
-Production build, strict TypeScript validation, twelve unit tests and nine sample-mode API smoke checks passed. Browser checks covered desktop/mobile layouts, product navigation, wishlist, bag quantities, authoritative checkout total, sample checkout controls, guided styling, search, category filtering and quick view. Additional browser checks verified local face, hand and pose tracking on sample photos and a rendered 3D model. The sample checkout stores orders in session storage without invoking payments. Live MongoDB/Razorpay/provider integration and camera tracking with actual product assets remain unverified.
-
-
-
-## Face scan styling
-
-Every catalogue card, quick view and product page links to that product in the try-on studio. Choose **Scan my face**, then use the camera, upload a portrait or scan the sample. The scan checks for one face and estimates length relative to breadth from local landmarks, accounting for image dimensions. It creates an optional catalogue styling edit and previews the first available earring on that portrait. Selecting another recommended earring or necklace reuses the portrait; rings and bracelets need a hand or wrist photo. Recommendations are simple editorial rules, not scientific suitability or fit predictions. In Browser face scan mode, neither photos nor proportions are uploaded or saved in browser storage. Clear scan & photo removes the result and preview; active camera tracks stop on clear, close or unmount.
-
-
-Python point-by-point tracking, setup and privacy details: [python/README.md](python/README.md).
-
-
-### Demo checkout
-
-The bag and checkout include photo order summaries, quantity/removal controls, saved pieces, responsive delivery fields and a demo-details shortcut. Sample checkout opens an explicitly labelled payment simulator with UPI, card and net banking choices. Success creates a session-only sample receipt; simulated failure and cancellation keep the bag for retry. No payment credentials are collected, no money is charged and no fulfilment is triggered. Live Razorpay checkout remains separate and requires configured services.
-
-### Carla Diamonds branding and store media
-
-The supplied logo drives the plum/ivory theme and is used for the site header, footer, payment gateway, browser icon, Apple icon and social metadata. Run `Start-Carla.cmd` locally. Existing browser-storage and authentication identifiers remain stable so saved bags and sessions survive the rebrand. The old layered-chain product URL redirects to its renamed page.
-
-`/store-stories` includes all 15 owner-supplied reels and the photo carousel, with video/photo filtering and progressive loading. The homepage features original store photographs plus three Instagram embeds. Embeds load directly from Instagram with a permanent original-post link when playback is restricted. This is a curated collection of current embeds, not an authenticated auto-sync of future posts. Add future links in `lib/instagram.ts`, or connect the store account before implementing an API-backed feed. Sample catalogue products remain labelled and are not presented as inventory inferred from Instagram.
-
-## Original Carla gallery update
-The homepage now uses a four-image campaign slideshow, with pause/previous/next controls and reduced-motion support. Store Stories displays 18 locally hosted original images, with category filters and an accessible enlarged-photo dialog. About uses the two supplied opening campaign photographs. Contact uses the public Instagram phone number and map link, plus a copyable enquiry composer (it does not claim to submit messages).
-
-All 15 supplied reels are now hosted locally as H.264/AAC MP4 files in public/videos/carla, with fast-start metadata and individual poster frames. Native players appear on Home, Store Stories and Contact. Visible films autoplay muted, pause offscreen, and respect reduced-motion preferences. Browser playback controls enable sound and manual playback. Future Instagram posts are not imported automatically.
-
-Image delivery honours per-component responsive sizes and uses quality 90. The homepage campaign frame fits the desktop viewport and shows the full portrait image on mobile.
-
-## Boutique enquiries, accounts and live services
-All 15 films appear directly on the homepage. There is no separate Films page.
-WhatsApp enquiry drafts go to the public boutique number +91 76720 21223. Product enquiries include the selected variant, reference and product link; bag enquiries include quantities. Contact accepts a name, product and question. Visitors choose when to send the WhatsApp draft. Confirm that the boutique number is enabled for WhatsApp before launch.
-`/login` and `/account` use the existing server-backed login and registration APIs. Configure `MONGODB_URI` and a strong `SESSION_SECRET` in local `.env.local` or Vercel environment settings. No demo credentials or simulated successful logins are provided.
-GoldAPI.io integration requires server-only `GOLD_API_TOKEN`. The server fetches XAU/INR gram prices, validates currency/price/timestamp, and caches quotes for five minutes. Older quotes show as last available; failures never produce fabricated rates. These are indicative metal values, not the store's final retail prices.
-Razorpay checkout already creates orders server-side, verifies payment signatures and checks captured amounts. Configure `MONGODB_URI`, `SESSION_SECRET`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, and the deployed `APP_URL`. Set the Razorpay payment.captured webhook to `/api/webhooks/razorpay`. Test with Razorpay test credentials before activating live keys. Existing demo checkout remains labelled as a simulation until a live backend is configured. Never send secrets in chat or commit them to GitHub.
-
-## Live gold estimates and shopping assistant
-
-Set `GOLD_API_TOKEN` (GoldAPI.io XAU/INR) and `OPENAI_API_KEY` in the server environment. Local development uses ignored `.env.local`; configure these separately on your hosting provider. Never use NEXT_PUBLIC variables for either credential. Restart the server after updating keys. The initial provider verification returned an invalid GoldAPI key and an exhausted OpenAI credit balance; replace the former and fund the latter before expecting live responses.
-
-In Admin → Products & variants → Edit, use **Gold pricing & live estimate**. Enter net gold weight in grams (excluding stones), stone weight in carats, stone value in INR, making charges (fixed INR, INR per gram, or percentage of gold value), and the applicable tax percentage. Enable the estimate and save. MongoDB and administrator credentials must be configured to persist products; the default sample catalogue is not editable inventory.
-
-Estimate = (net gold weight × rate for purity + making charges + stone value) × (1 + tax percentage / 100). Rates are shared server-side and cached for five minutes; failures retry after one minute. Older quotes and failed refreshes are labelled delayed. 14K uses 14/24 of the 24K rate. No making or tax rate is assumed. Estimates apply to the entered product weight; sizes may vary. Estimates do not overwrite catalogue selling prices or checkout totals. Update product and variant selling prices separately after confirming the quote with the customer.
-
-The floating Ask Carla panel uses public catalogue data and gold quotes, returns validated product links, and opens a WhatsApp draft containing the customer's last two questions. It cannot access private customer records, administration or payment operations. Conversations are sent to OpenAI with storage disabled and kept only in browser component memory. Request size, conversation length, origin and rate limits are enforced. For multi-instance hosting, configure MongoDB for shared request limits and ensure your proxy replaces untrusted forwarded IP headers.
-
-Home and Our Story show compact film poster previews linking to /films. All 15 videos play on demand on Films and Store Stories.
-
-
-## Live 3D virtual try-on
-
-Run `npm ci`, then `npm run dev`, and open `/virtual-try-on`. No Python service, database or AI API key is required for the local try-on engine. Use HTTPS on deployed sites; browsers also allow camera access on localhost. Camera permission is requested by Start camera. The existing application remains Next.js rather than introducing a separate Vite/Express application.
-
-Choose Live 3D jewellery, then a sample photo, a JPG/PNG/WebP (up to 10 MB / 24 megapixels), or the front/rear camera. Earrings use estimated side-face anchors; necklaces use visible pose shoulders; bracelets/bangles and rings use hand landmarks. Switching products reloads their GLB without restarting the camera stream; switching body areas replaces the tracker. Tracking runs at most about 15 times per second on new video frames, with smoothed XYZ coordinates; rendering composites the latest landmarks onto every new video frame. MediaPipe tries GPU first, then CPU. Models and WASM are served locally from `public/mediapipe`. No fixed-coordinate fallback is used by the studio.
-
-`lib/try-on.ts` contains landmark fitting and smoothing. `lib/try-on-renderer.ts` owns GLB loading, pixel-aligned transparent Three.js rendering, environment lighting, pair separation, orientation and GPU disposal. `components/studio.tsx` owns camera/photo lifecycle, product selection and export. The Photo overlay option preserves the existing image preview. Fit scale and horizontal/vertical sliders refine estimated placement; Reset fit restores defaults. Save preview downloads the composited PNG locally. Clear stops camera tracks and removes the displayed photo. Hiding or leaving the page stops active camera tracks. Browser face scans now default to local processing; Python remains an explicitly selected option.
-
-Product `tryOnCalibration` is optional and persists through the validated product API and MongoDB schema. It accepts `scale` (positive multiplier), `offset` ([x,y,z] in model units, screen-down Y), `rotation` ([x,y,z] radians), and `paired` (true only for an earring asset containing two separated pieces along X). The existing sample earring models default to paired. Merchant earring assets default to one earring, duplicated for the two detected anchors. Model bounding-box top is the hanging anchor for earrings and necklaces; wrist/finger pieces are centered. Author models around these conventions and calibrate each product before sale.
-
-Current limits: supplied GLBs are illustrative design studies, not scans of store inventory. Ear anchors, depth, scale and physical fit are estimates. Necklace geometry uses rigid shoulder alignment, not a deformable multi-anchor chain rig. Hair/body segmentation, physically accurate occlusion, ambient light estimation, multiple hands/bangle stacking, worker-based inference and cross-device acceptance testing remain future work. Inference currently runs on the UI thread at a capped rate. No claim of verified physical sizing is made. Photos and live frames are neither uploaded nor stored by the browser try-on engine.
-
-
-## Boutique administration and hidden try-on
-
-The customer website no longer shows virtual try-on or 3D viewer links. All former try-on/viewer URLs redirect to `/shop`. The implementation, tracking assets and GLB models remain in the source tree for future work; they are not imported by the customer pages.
-
-Open `/admin` to manage jewellery. Products support multiple photographs, category, selling price, metal, purity, weight, gemstones, sizes, variant stock, draft/published visibility, New Arrival status, collection membership, edit and deletion. Uploads accept validated JPEG, PNG or WebP images up to 4 MB. Draft products stay private. Deleted products disappear from the catalogue. Website pages edits publish headings, introductions, body copy and cover photographs; collections and store photographs have their own editors. Homepage campaign photographs and Store Stories use the managed photo list.
-
-For local development, admin data and uploads persist in ignored `.data/`. Live hosting requires `MONGODB_URI`; products and settings use MongoDB and uploaded images use GridFS. The first connection initializes an empty database with the existing labelled sample catalogue once; deleting all products does not repopulate it. An existing populated database is preserved. Local filesystem writes are rejected in production, preventing false success on ephemeral hosting.
-
-Administrator credentials are server-only `ADMIN_EMAIL` and bcrypt `ADMIN_PASSWORD_HASH`. The supplied account was configured in ignored local `.env.local`; no password or session secret is committed. Set those values and a random `SESSION_SECRET` of at least 32 characters in Vercel before using live administration. Set `APP_URL` to the production domain if used. In dotenv files, escape dollar signs in bcrypt hashes; Vercel's environment editor accepts the raw hash. Database and image storage settings must be configured independently of Git deployment. Test admin sign-in, image upload, publication and deletion after deployment.
-
-
-### Verified deployment updates
-
-Keep verified commits enabled in Vercel. Publish with a signed Git commit or GitHub's verified web editor. Production administration requires the server environment settings described above.
+Push to the GitHub `main` branch connected to the Carla Diamonds Vercel project. This project requires verified commits: use signed Git commits or GitHub's verified web editor. Set production environment variables before deployment. Verify `/admin` login, an image upload, draft/publish/delete, public category pages, and the hidden studio redirects on the deployed domain. Credentials and local uploaded data are excluded from Git and deployment packages.

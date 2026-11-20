@@ -1,8 +1,7 @@
 import {cookies} from 'next/headers';
 import {SignJWT,jwtVerify} from 'jose';
 import {createHash,timingSafeEqual,createHmac,randomBytes} from 'node:crypto';
-import {db} from './db';
-import {RateLimit} from '@/models';
+import {hasSupabase,supabaseServer,databaseError} from './supabase';
 const developmentSecret=randomBytes(48).toString('hex');
 export function secret(){const s=process.env.SESSION_SECRET;if(!s&&process.env.NODE_ENV==='production')throw new Error('SESSION_SECRET is not configured.');return new TextEncoder().encode(s||developmentSecret);}
 export async function session(){try{const c=(await cookies()).get('lumiere-session');if(!c)return null;return(await jwtVerify(c.value,secret(),{issuer:'lumiere'})).payload as {sub:string;role:string;email:string;name?:string;phone?:string};}catch{return null;}}
@@ -13,4 +12,4 @@ export function origin(req:Request){const requestURL=new URL(req.url);const expe
 export const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 export function verifyHmac(body:string,signature:string,key:string){const expected=createHmac('sha256',key).update(body).digest('hex');return /^[0-9a-f]{64}$/i.test(signature)&&timingSafeEqual(Buffer.from(expected,'hex'),Buffer.from(signature,'hex'));}
 const memory=new Map<string,{count:number;expires:number}>();
-export async function limit(req:Request,bucket:string,max=15){const key=hash(bucket+':'+(req.headers.get('x-forwarded-for')?.split(',')[0]||'local'));const period=Math.floor(Date.now()/60000);if(process.env.MONGODB_URI){await db();const r=await RateLimit.findOneAndUpdate({_id:key+period},{$inc:{count:1},$setOnInsert:{expiresAt:new Date(Date.now()+120000)}},{upsert:true,new:true});if(r.count>max)throw new HttpError(429,'Please wait a minute before trying again.');}else{const now=Date.now();for(const[k,v]of memory)if(v.expires<now)memory.delete(k);const r=memory.get(key)||{count:0,expires:now+60000};r.count++;memory.set(key,r);if(r.count>max)throw new HttpError(429,'Please wait a minute before trying again.');}}
+export async function limit(req:Request,bucket:string,max=15){const key=hash(bucket+':'+(req.headers.get('x-forwarded-for')?.split(',')[0]||'local'));const period=Math.floor(Date.now()/60000);if(hasSupabase()){const {data,error}=await supabaseServer().rpc('carla_rate_limit',{p_key:key+period});databaseError(error);if(Number(data)>max)throw new HttpError(429,'Please wait a minute before trying again.');}else{const now=Date.now();for(const[k,v]of memory)if(v.expires<now)memory.delete(k);const r=memory.get(key)||{count:0,expires:now+60000};r.count++;memory.set(key,r);if(r.count>max)throw new HttpError(429,'Please wait a minute before trying again.');}}

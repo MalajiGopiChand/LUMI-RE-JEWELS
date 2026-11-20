@@ -1,7 +1,6 @@
-import {db} from '../lib/db';
-import {ProductModel} from '../models';
-import {sampleProducts} from '../lib/catalogue';
 import {loadEnvConfig} from '@next/env';
+import {hasSupabase} from '../lib/supabase';
+import {catalogue} from '../lib/admin-store';
 loadEnvConfig(process.cwd());
-async function seed(){await db();for(const p of sampleProducts)await ProductModel.updateOne({id:p.id},{$setOnInsert:p},{upsert:true});console.log('Sample catalogue seeded without overwriting existing products.');process.exit(0)}
-seed().catch(e=>{console.error(e.message);process.exit(1)});
+async function seed(){if(!hasSupabase())throw new Error('Configure Supabase and run supabase/setup.sql first.');const rows=await catalogue(true);console.log('Supabase catalogue ready: '+rows.length+' products. Existing records were preserved.');}
+seed().catch(error=>{console.error(error.message);process.exitCode=1;});
